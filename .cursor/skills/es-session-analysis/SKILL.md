@@ -73,8 +73,8 @@ For a **sample** of the first **N** calendar days from the first tick (default 6
 Outputs:
 
 - `daily_metrics.csv` — per trading day metrics, open bucket, IB, hit flags.
-- `conditional_probabilities.csv` — P(hit | bucket) for each open bucket (`inside_gap_up`, `inside_gap_down`, `above_prior_range`, `below_prior_range`) and each level.
-- `conditional_probabilities.md` — human-readable table; flags buckets with **&lt; 20** days.
+- `conditional_probabilities.csv` — P(hit | bucket) per open bucket (`inside_gap_up`, `inside_gap_down`, `above_prior_range`, `below_prior_range`) and each level; **`probability_pct`** is 0–100 (same ratio as the formula above).
+- `conditional_probabilities.md` — human-readable table with **% hit**; flags buckets with **&lt; 20** days.
 
 ## Code location
 

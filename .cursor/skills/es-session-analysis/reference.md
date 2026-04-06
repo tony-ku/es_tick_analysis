@@ -42,4 +42,6 @@ For bucket `B` in {`inside_gap_up`, `inside_gap_down`, `above_prior_range`, `bel
 P(hit L | B) = count(days with bucket B and hit L) / count(days with bucket B)
 ```
 
+Exports use **`probability_pct`**: the same ratio as a percentage in **0–100** (CSV column; Markdown tables show a `% hit` column with a `%` suffix).
+
 Boundary days (open equals prior close or exactly prior high/low in a way that violates strict buckets) are excluded from the four open-bucket denominators.
