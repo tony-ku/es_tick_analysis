@@ -1,0 +1,3 @@
+trading_day,open,prior_close,prior_day_high,prior_day_low,prior_day_vpoc,open_bucket,onh,onl,onmid,on_vpoc,day_high,day_low,day_close,day_vpoc,ibh,ibl,hit_on_vpoc,hit_prior_day_vpoc,hit_onl,hit_onh,hit_prior_day_high,hit_prior_day_low
+2024-01-02,4000.0,,,,,incomplete,,,,,4010.0,4000.0,4005.0,4010.0,,,,,,,,
+2024-01-03,4002.0,4005.0,4010.0,4000.0,4010.0,O2,4015.0,3985.0,4000.0,3985.0,4008.0,3980.0,3998.0,4000.0,4008.0,4002.0,True,False,True,False,False,True
