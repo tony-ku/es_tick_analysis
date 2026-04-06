@@ -295,7 +295,7 @@ def conditional_probabilities(
     rows: List[Dict[str, Any]],
     buckets: Optional[List[str]] = None,
 ) -> pd.DataFrame:
-    """Rows: bucket; cols: level, count_bucket, hit_count, probability."""
+    """Rows: bucket; cols: level, counts, probability_pct (0–100)."""
     if buckets is None:
         buckets = list(OPEN_BUCKET_ORDER)
     out_rows = []
@@ -308,6 +308,7 @@ def conditional_probabilities(
             undef = [r for r in sub if r.get(key) is None]
             n_valid = len(hits) + len(miss)
             p = (len(hits) / n_valid) if n_valid > 0 else float("nan")
+            pct = (100.0 * p) if pd.notna(p) else float("nan")
             out_rows.append(
                 {
                     "bucket": b,
@@ -316,7 +317,7 @@ def conditional_probabilities(
                     "days_level_defined": n_valid,
                     "days_undefined_level": len(undef),
                     "hit_count": len(hits),
-                    "probability": p,
+                    "probability_pct": pct,
                     "small_sample": n < 20,
                 }
             )
@@ -421,7 +422,7 @@ def _markdown_table(header: List[str], body: List[List[str]]) -> List[str]:
 def probabilities_to_markdown(prob_df: pd.DataFrame) -> str:
     """Pivot-style markdown table for readability (aligned columns)."""
     lines: List[str] = ["# Conditional hit probabilities P(hit | open bucket)\n"]
-    header = ["Level", "Days (bucket)", "Defined", "Hits", "P(hit)"]
+    header = ["Level", "Days (bucket)", "Defined", "Hits", "% hit"]
 
     for b in OPEN_BUCKET_ORDER:
         sub = prob_df[prob_df["bucket"] == b]
@@ -433,8 +434,8 @@ def probabilities_to_markdown(prob_df: pd.DataFrame) -> str:
 
         body: List[List[str]] = []
         for _, r in sub.iterrows():
-            p = r["probability"]
-            ps = f"{p:.4f}" if pd.notna(p) else "nan"
+            p = r["probability_pct"]
+            ps = f"{p:.2f}%" if pd.notna(p) else "nan"
             body.append(
                 [
                     str(r["level"]),

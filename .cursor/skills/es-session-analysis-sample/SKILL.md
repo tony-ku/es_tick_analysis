@@ -34,8 +34,8 @@ Defaults: `--output-dir output_sample`, `--days 60`.
 Outputs (same names as full run):
 
 - `daily_metrics.csv`
-- `conditional_probabilities.csv`
-- `conditional_probabilities.md`
+- `conditional_probabilities.csv` — includes **`probability_pct`** (0–100) per bucket/level
+- `conditional_probabilities.md` — **% hit** column (percentages)
 
 The CLI prints the resolved **anchor** and **last inclusive** dates.
 
