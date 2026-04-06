@@ -3,14 +3,15 @@ name: es-session-analysis
 description: >-
   Analyze Investor/RT-style ES (@ES#) tick files for Chicago overnight/day sessions,
   VPOC, Initial Balance, open classification vs prior day, and conditional hit
-  probabilities. Use when working with Historical_Data tick exports or session statistics.
+  probabilities, or post-IB extension exceed rates vs IBH/IBL. Use when working with
+  Historical_Data tick exports or session statistics.
 ---
 
 # ES Overnight / Day Session Analysis
 
 ## When to use
 
-- User asks for ONH/ONL/ONMID, overnight VPOC, day VPOC, IBH/IBL, or probabilities of hitting those levels conditional on open type.
+- User asks for ONH/ONL/ONMID, overnight VPOC, day VPOC, IBH/IBL, probabilities of hitting those levels conditional on open type, or **post-IB** odds of taking out IBH/IBL or 1.5× IB-width extensions.
 - Data is tab-separated tick text (`SYMBOL`, `DATE`, `PRICE`, `TICKVOL`, `BID`, `ASK`) from Investor/RT or compatible exports.
 
 ## Timezone and sessions (America/Chicago)
@@ -45,6 +46,12 @@ description: >-
   - **`above_prior_range`**: `open > prior_close` and `open > prior_high` (opens above yesterday’s high)
   - **`below_prior_range`**: `open < prior_close` and `open < prior_low` (opens below yesterday’s low)
 - **IB / IBH / IBL**: First hour of Day session **08:30–09:30** Chicago; IBH/IBL = high/low of `PRICE` in that window.
+- **Post-IB window**: **09:30–16:00** Chicago (remainder of day session after IB ends). **`post_ib_high` / `post_ib_low`**: max/min `PRICE` in that window only.
+- **Post-IB exceed flags** (per day; `None` if IB or post-IB data missing, or IB width is 0 for extension levels):
+  - **`post_ib_exceed_ibh`**: `post_ib_high > IBH`
+  - **`post_ib_exceed_ibl`**: `post_ib_low < IBL`
+  - **`post_ib_exceed_upper_1p5`**: `post_ib_high > IBH + 1.5 × (IBH − IBL)` when IB width &gt; 0
+  - **`post_ib_exceed_lower_1p5`**: `post_ib_low < IBL − 1.5 × (IBH − IBL)` when IB width &gt; 0
 
 ## Hit definition
 
@@ -72,9 +79,10 @@ For a **sample** of the first **N** calendar days from the first tick (default 6
 
 Outputs:
 
-- `daily_metrics.csv` — per trading day metrics, open bucket, IB, hit flags.
-- `conditional_probabilities.csv` — P(hit | bucket) per open bucket (`inside_gap_up`, `inside_gap_down`, `above_prior_range`, `below_prior_range`) and each level; **`probability_pct`** is 0–100 (same ratio as the formula above).
-- `conditional_probabilities.md` — human-readable table with **% hit**; flags buckets with **&lt; 20** days.
+- `daily_metrics.csv` — per trading day metrics, open bucket, IB, `post_ib_high` / `post_ib_low`, post-IB exceed flags, and reference hit flags.
+- `conditional_probabilities.csv` — P(hit | bucket) per open bucket (`inside_gap_up`, `inside_gap_down`, `above_prior_range`, `below_prior_range`) and each reference level; **`probability_pct`** is 0–100 (same ratio as the formula above).
+- `conditional_probabilities_post_ib.csv` — P(exceed | bucket) for four rows per bucket with **`level`** text like `post-IB high > IBH`, `post-IB low < IBL`, `post-IB high > IBH + 1.5*(IBH-IBL)`, `post-IB low < IBL - 1.5*(IBH-IBL)`; same **`probability_pct`** schema.
+- `conditional_probabilities.md` — reference-level tables, then a **---** rule, then **Post-IB session** (IBH / IBL / 1.5× IB **range**); **% hit**; flags buckets with **&lt; 20** days.
 
 ## Code location
 
