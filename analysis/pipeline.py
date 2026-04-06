@@ -240,6 +240,35 @@ def build_daily_rows(
 
         lo, hi = day.min_p, day.max_p
 
+        ibh_v = day.ibh()
+        ibl_v = day.ibl()
+        post_hi = day.post_ib_high()
+        post_lo = day.post_ib_low()
+        ib_width = (ibh_v - ibl_v) if ibh_v is not None and ibl_v is not None else None
+
+        post_ib_exceed_ibh: Optional[bool] = None
+        if ibh_v is not None and post_hi is not None:
+            post_ib_exceed_ibh = post_hi > ibh_v
+
+        post_ib_exceed_ibl: Optional[bool] = None
+        if ibl_v is not None and post_lo is not None:
+            post_ib_exceed_ibl = post_lo < ibl_v
+
+        post_ib_exceed_upper_1p5: Optional[bool] = None
+        post_ib_exceed_lower_1p5: Optional[bool] = None
+        if (
+            ibh_v is not None
+            and ibl_v is not None
+            and post_hi is not None
+            and post_lo is not None
+            and ib_width is not None
+            and ib_width > 0
+        ):
+            upper_1p5 = ibh_v + 1.5 * ib_width
+            lower_1p5 = ibl_v - 1.5 * ib_width
+            post_ib_exceed_upper_1p5 = post_hi > upper_1p5
+            post_ib_exceed_lower_1p5 = post_lo < lower_1p5
+
         row = {
             "trading_day": d.isoformat(),
             "open": open_px,
@@ -256,8 +285,10 @@ def build_daily_rows(
             "day_low": lo,
             "day_close": day.last_price,
             "day_vpoc": day.day_vpoc(),
-            "ibh": day.ibh(),
-            "ibl": day.ibl(),
+            "ibh": ibh_v,
+            "ibl": ibl_v,
+            "post_ib_high": post_hi,
+            "post_ib_low": post_lo,
             "hit_on_vpoc": level_hit(lo, hi, on_vpoc),
             "hit_prior_day_vpoc": level_hit(lo, hi, prior_vpoc),
             "hit_onl": level_hit(lo, hi, onl),
@@ -265,6 +296,10 @@ def build_daily_rows(
             "hit_onh": level_hit(lo, hi, onh),
             "hit_prior_day_high": level_hit(lo, hi, prior_high),
             "hit_prior_day_low": level_hit(lo, hi, prior_low),
+            "post_ib_exceed_ibh": post_ib_exceed_ibh,
+            "post_ib_exceed_ibl": post_ib_exceed_ibl,
+            "post_ib_exceed_upper_1p5": post_ib_exceed_upper_1p5,
+            "post_ib_exceed_lower_1p5": post_ib_exceed_lower_1p5,
         }
         rows.append(row)
     return rows
@@ -290,6 +325,20 @@ LEVEL_LABELS = [
     "yDay_Low",
 ]
 
+POST_IB_LEVEL_KEYS = [
+    "post_ib_exceed_ibh",
+    "post_ib_exceed_ibl",
+    "post_ib_exceed_upper_1p5",
+    "post_ib_exceed_lower_1p5",
+]
+
+POST_IB_LEVEL_LABELS = [
+    "post-IB high > IBH",
+    "post-IB low < IBL",
+    "post-IB high > IBH + 1.5*(IBH-IBL)",
+    "post-IB low < IBL - 1.5*(IBH-IBL)",
+]
+
 
 def conditional_probabilities(
     rows: List[Dict[str, Any]],
@@ -303,6 +352,39 @@ def conditional_probabilities(
         sub = [r for r in rows if r.get("open_bucket") == b]
         n = len(sub)
         for key, label in zip(LEVEL_KEYS, LEVEL_LABELS):
+            hits = [r for r in sub if r.get(key) is True]
+            miss = [r for r in sub if r.get(key) is False]
+            undef = [r for r in sub if r.get(key) is None]
+            n_valid = len(hits) + len(miss)
+            p = (len(hits) / n_valid) if n_valid > 0 else float("nan")
+            pct = (100.0 * p) if pd.notna(p) else float("nan")
+            out_rows.append(
+                {
+                    "bucket": b,
+                    "level": label,
+                    "days_in_bucket": n,
+                    "days_level_defined": n_valid,
+                    "days_undefined_level": len(undef),
+                    "hit_count": len(hits),
+                    "probability_pct": pct,
+                    "small_sample": n < 20,
+                }
+            )
+    return pd.DataFrame(out_rows)
+
+
+def conditional_probabilities_post_ib(
+    rows: List[Dict[str, Any]],
+    buckets: Optional[List[str]] = None,
+) -> pd.DataFrame:
+    """P(exceed level in post-IB window | open bucket); same schema as conditional_probabilities."""
+    if buckets is None:
+        buckets = list(OPEN_BUCKET_ORDER)
+    out_rows = []
+    for b in buckets:
+        sub = [r for r in rows if r.get("open_bucket") == b]
+        n = len(sub)
+        for key, label in zip(POST_IB_LEVEL_KEYS, POST_IB_LEVEL_LABELS):
             hits = [r for r in sub if r.get(key) is True]
             miss = [r for r in sub if r.get(key) is False]
             undef = [r for r in sub if r.get(key) is None]
@@ -347,9 +429,10 @@ def run_pipeline(
     chunksize: int = 1_000_000,
     max_calendar_days: Optional[int] = None,
     verbose: bool = False,
-) -> tuple[pd.DataFrame, pd.DataFrame, Dict[str, Any]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict[str, Any]]:
     """
-    Read tick file in chunks; return (daily_metrics_df, conditional_prob_df, meta).
+    Read tick file in chunks; return (daily_metrics_df, conditional_prob_df,
+    conditional_prob_post_ib_df, meta).
 
     When max_calendar_days is set, only ticks with Chicago date in
     [anchor_date, anchor_date + max_calendar_days - 1] are processed (anchor = date
@@ -399,7 +482,8 @@ def run_pipeline(
     rows = build_daily_rows(on_aggs, day_aggs)
     daily_df = pd.DataFrame(rows)
     prob_df = conditional_probabilities(rows)
-    return daily_df, prob_df, meta
+    prob_post_ib_df = conditional_probabilities_post_ib(rows)
+    return daily_df, prob_df, prob_post_ib_df, meta
 
 
 def _markdown_table(header: List[str], body: List[List[str]]) -> List[str]:
@@ -447,3 +531,48 @@ def probabilities_to_markdown(prob_df: pd.DataFrame) -> str:
             )
         lines.extend(_markdown_table(header, body))
     return "\n".join(lines)
+
+
+def probabilities_post_ib_to_markdown(prob_df: pd.DataFrame) -> str:
+    """Markdown tables for post-IB exceed rates (aligned columns)."""
+    lines: List[str] = [
+        "# Post-IB session: P(exceed IBH / IBL / 1.5× IB range | open bucket)\n",
+        "\nAfter IB ends (09:30 Chicago), we use only **post-IB** prices in **[09:30, 16:00)**. "
+        "**IBH** / **IBL** come from the first hour **[08:30, 09:30)**. "
+        "**1.5× IB range** means **1.5 × (IBH − IBL)** added above IBH or subtracted below IBL (not 1.5× price). "
+        "A day is skipped for a row if IB or post-IB range is missing, or IB width is 0 for the extension rows.\n",
+    ]
+    header = ["Level", "Days (bucket)", "Defined", "Hits", "% hit"]
+
+    for b in OPEN_BUCKET_ORDER:
+        sub = prob_df[prob_df["bucket"] == b]
+        if sub.empty:
+            continue
+        flag = " **(n<20)**" if sub["small_sample"].any() else ""
+        title = OPEN_BUCKET_TITLES.get(b, b)
+        lines.append(f"\n## {title} (`{b}`){flag}\n")
+
+        body: List[List[str]] = []
+        for _, r in sub.iterrows():
+            p = r["probability_pct"]
+            ps = f"{p:.2f}%" if pd.notna(p) else "nan"
+            body.append(
+                [
+                    str(r["level"]),
+                    str(int(r["days_in_bucket"])),
+                    str(int(r["days_level_defined"])),
+                    str(int(r["hit_count"])),
+                    ps,
+                ]
+            )
+        lines.extend(_markdown_table(header, body))
+    return "\n".join(lines)
+
+
+def probabilities_combined_markdown(prob_df: pd.DataFrame, prob_post_ib_df: pd.DataFrame) -> str:
+    """Reference-level conditional hits plus post-IB exceed tables."""
+    return (
+        probabilities_to_markdown(prob_df)
+        + "\n\n---\n\n"
+        + probabilities_post_ib_to_markdown(prob_post_ib_df)
+    )

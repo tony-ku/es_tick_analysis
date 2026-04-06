@@ -33,9 +33,10 @@ Defaults: `--output-dir output_sample`, `--days 60`.
 
 Outputs (same names as full run):
 
-- `daily_metrics.csv`
-- `conditional_probabilities.csv` — includes **`probability_pct`** (0–100) per bucket/level
-- `conditional_probabilities.md` — **% hit** column (percentages)
+- `daily_metrics.csv` — includes **`post_ib_high`**, **`post_ib_low`**, and **`post_ib_exceed_*`** columns
+- `conditional_probabilities.csv` — reference levels; **`probability_pct`** (0–100) per bucket/level
+- `conditional_probabilities_post_ib.csv` — post-IB exceed levels (explicit **IBH** / **IBL** / **1.5×(IBH−IBL)** range in the `level` column)
+- `conditional_probabilities.md` — reference tables plus **Post-IB session** section with **% hit**
 
 The CLI prints the resolved **anchor** and **last inclusive** dates.
 

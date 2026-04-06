@@ -22,6 +22,27 @@ Day(d) = [ datetime(d, 08:30), datetime(d, 16:00) )
 IB(d) = [ datetime(d, 08:30), datetime(d, 09:30) )
 ```
 
+## Post-IB window (same trading day)
+
+After IB ends, the rest of the day session:
+
+```
+PostIB(d) = [ datetime(d, 09:30), datetime(d, 16:00) )
+```
+
+Half-open: 09:30 inclusive (first tick at or after IB end), 16:00 exclusive.
+
+## Post-IB exceed levels (conditional stats)
+
+Let `w = IBH − IBL` (IB width). For bucket `B` in the four open buckets:
+
+- **`post-IB high > IBH`**: fraction of days in `B` where **post-IB high** &gt; **IBH** (among days with both IB and post-IB data).
+- **`post-IB low < IBL`**: **post-IB low** &lt; **IBL**.
+- **`post-IB high > IBH + 1.5*(IBH-IBL)`**: **post-IB high** &gt; `IBH + 1.5 × w` (only if `w > 0`). This is **1.5× the IB range**, not 1.5× the IBH price.
+- **`post-IB low < IBL - 1.5*(IBH-IBL)`**: **post-IB low** &lt; `IBL − 1.5 × w` (only if `w > 0`).
+
+Same **`probability_pct`** (0–100) export as reference conditional probabilities; undefined flags excluded from denominators.
+
 ## VPOC algorithm
 
 1. Map each tick with `TICKVOL > 0` to bucket `b = round(price * 4) / 4`.

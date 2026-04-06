@@ -106,8 +106,8 @@ def _fixture_path() -> Path:
 
 def test_run_pipeline_sample_window_fewer_or_equal_rows():
     path = _fixture_path()
-    full_daily, _, _ = run_pipeline(str(path), chunksize=1000)
-    win_daily, _, meta = run_pipeline(str(path), chunksize=1000, max_calendar_days=60)
+    full_daily, _, _, _ = run_pipeline(str(path), chunksize=1000)
+    win_daily, _, _, meta = run_pipeline(str(path), chunksize=1000, max_calendar_days=60)
     assert len(win_daily) <= len(full_daily)
     assert meta.get("anchor_date") == "2024-01-02"
     assert meta.get("max_calendar_days") == 60
@@ -115,7 +115,7 @@ def test_run_pipeline_sample_window_fewer_or_equal_rows():
 
 def test_run_pipeline_one_calendar_day_excludes_later_days():
     path = _fixture_path()
-    daily, _, meta = run_pipeline(str(path), chunksize=1000, max_calendar_days=1)
+    daily, _, _, meta = run_pipeline(str(path), chunksize=1000, max_calendar_days=1)
     assert meta["anchor_date"] == "2024-01-02"
     assert meta["last_inclusive_date"] == "2024-01-02"
     days = set(daily["trading_day"].tolist())
@@ -125,6 +125,21 @@ def test_run_pipeline_one_calendar_day_excludes_later_days():
 
 def test_run_pipeline_two_calendar_days_includes_jan3():
     path = _fixture_path()
-    daily, _, meta = run_pipeline(str(path), chunksize=1000, max_calendar_days=2)
+    daily, _, _, meta = run_pipeline(str(path), chunksize=1000, max_calendar_days=2)
     assert meta["last_inclusive_date"] == "2024-01-03"
     assert len(daily) == 2
+
+
+def test_post_ib_exceed_flags_synthetic_jan3():
+    """IB 4002–4008 (w=6); post-IB 4000/3980/3998 → exceed IBL and lower 1.5, not IBH/upper 1.5."""
+    path = _fixture_path()
+    daily, _, _, _ = run_pipeline(str(path), chunksize=1000, max_calendar_days=60)
+    jan3 = daily[daily["trading_day"] == "2024-01-03"].iloc[0]
+    assert jan3["ibh"] == 4008.0
+    assert jan3["ibl"] == 4002.0
+    assert jan3["post_ib_high"] == 4000.0
+    assert jan3["post_ib_low"] == 3980.0
+    assert jan3["post_ib_exceed_ibh"] is False
+    assert jan3["post_ib_exceed_ibl"] is True
+    assert jan3["post_ib_exceed_upper_1p5"] is False
+    assert jan3["post_ib_exceed_lower_1p5"] is True

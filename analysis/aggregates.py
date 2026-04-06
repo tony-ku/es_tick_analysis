@@ -63,6 +63,8 @@ class DaySessionAgg:
     last_price: Optional[float] = None
     ib_min: float = float("inf")
     ib_max: float = float("-inf")
+    post_ib_min: float = float("inf")
+    post_ib_max: float = float("-inf")
 
     def add(self, ts: datetime, price: float, tickvol: float) -> None:
         ts = as_chicago_ts(ts)
@@ -85,6 +87,9 @@ class DaySessionAgg:
         if ib_lo <= ts < ib_hi:
             self.ib_min = min(self.ib_min, price)
             self.ib_max = max(self.ib_max, price)
+        if ts >= ib_hi:
+            self.post_ib_min = min(self.post_ib_min, price)
+            self.post_ib_max = max(self.post_ib_max, price)
 
     def day_vpoc(self) -> Optional[float]:
         return vpoc_from_bins(dict(self.vol_bins))
@@ -98,4 +103,14 @@ class DaySessionAgg:
         if self.ib_min == float("inf"):
             return None
         return self.ib_min
+
+    def post_ib_high(self) -> Optional[float]:
+        if self.post_ib_max == float("-inf"):
+            return None
+        return self.post_ib_max
+
+    def post_ib_low(self) -> Optional[float]:
+        if self.post_ib_min == float("inf"):
+            return None
+        return self.post_ib_min
 
