@@ -20,7 +20,7 @@ def main() -> None:
         "--output-dir",
         "-o",
         default="output",
-        help="Directory for daily_metrics.csv, conditional_probabilities*.csv, conditional_probabilities.md",
+        help="Directory for daily_metrics.csv, conditional_probabilities*.csv, conditional_probabilities_gap_fill.csv, conditional_probabilities.md",
     )
     p.add_argument(
         "--chunksize",
@@ -43,7 +43,7 @@ def main() -> None:
     out = Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
-    daily_df, prob_df, prob_post_ib_df, _meta = run_pipeline(
+    daily_df, prob_df, prob_post_ib_df, prob_gap_fill_df, _meta = run_pipeline(
         str(inp),
         chunksize=args.chunksize,
         verbose=args.verbose,
@@ -52,16 +52,22 @@ def main() -> None:
     daily_path = out / "daily_metrics.csv"
     prob_path = out / "conditional_probabilities.csv"
     prob_post_path = out / "conditional_probabilities_post_ib.csv"
+    prob_gap_path = out / "conditional_probabilities_gap_fill.csv"
     md_path = out / "conditional_probabilities.md"
 
     daily_df.to_csv(daily_path, index=False)
     prob_df.to_csv(prob_path, index=False)
     prob_post_ib_df.to_csv(prob_post_path, index=False)
-    md_path.write_text(probabilities_combined_markdown(prob_df, prob_post_ib_df), encoding="utf-8")
+    prob_gap_fill_df.to_csv(prob_gap_path, index=False)
+    md_path.write_text(
+        probabilities_combined_markdown(prob_df, prob_post_ib_df, prob_gap_fill_df),
+        encoding="utf-8",
+    )
 
     print(f"Wrote {daily_path} ({len(daily_df)} rows)")
     print(f"Wrote {prob_path}")
     print(f"Wrote {prob_post_path}")
+    print(f"Wrote {prob_gap_path}")
     print(f"Wrote {md_path}")
 
 

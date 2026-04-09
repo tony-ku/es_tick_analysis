@@ -33,10 +33,11 @@ Defaults: `--output-dir output_sample`, `--days 60`.
 
 Outputs (same names as full run):
 
-- `daily_metrics.csv` — includes **`post_ib_high`**, **`post_ib_low`**, and **`post_ib_exceed_*`** columns
+- `daily_metrics.csv` — includes **`post_ib_high`**, **`post_ib_low`**, **`post_ib_exceed_*`**, **`gap_pct`**, **`gap_filled`**, **`gap_size_bucket`**
 - `conditional_probabilities.csv` — reference levels; **`probability_pct`** (0–100) per bucket/level
 - `conditional_probabilities_post_ib.csv` — post-IB exceed levels (explicit **IBH** / **IBL** / **1.5×(IBH−IBL)** range in the `level` column)
-- `conditional_probabilities.md` — reference tables plus **Post-IB session** section with **% hit**
+- `conditional_probabilities_gap_fill.csv` — P(gap filled | gap size bucket); **`probability_pct`** (0–100)
+- `conditional_probabilities.md` — reference tables, **Post-IB session**, and **Gap fill** sections
 
 The CLI prints the resolved **anchor** and **last inclusive** dates.
 

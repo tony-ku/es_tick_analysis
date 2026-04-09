@@ -8,8 +8,10 @@ import pandas as pd
 from analysis.aggregates import OvernightAgg, vpoc_from_bins
 from analysis.pipeline import (
     build_daily_rows,
+    classify_gap_size_bucket,
     classify_open_bucket,
     conditional_probabilities,
+    gap_fill_probabilities,
     level_hit,
     process_ticks_frame,
     run_pipeline,
@@ -56,6 +58,16 @@ def test_overnight_bounds():
     assert hi == datetime(2024, 5, 15, 8, 30, tzinfo=CHICAGO)
 
 
+def test_classify_gap_size_bucket_boundaries():
+    assert classify_gap_size_bucket(0.01) == "gap_0_to_0p5_pct"
+    assert classify_gap_size_bucket(0.5) == "gap_0_to_0p5_pct"
+    assert classify_gap_size_bucket(0.5000001) == "gap_0p5_to_1_pct"
+    assert classify_gap_size_bucket(1.0) == "gap_0p5_to_1_pct"
+    assert classify_gap_size_bucket(1.0001) == "gap_1_to_2_pct"
+    assert classify_gap_size_bucket(2.0) == "gap_1_to_2_pct"
+    assert classify_gap_size_bucket(2.0001) == "gap_gt_2_pct"
+
+
 def test_classify_open_bucket():
     assert classify_open_bucket(100.5, 100.0, 102.0, 99.0) == "inside_gap_up"
     assert classify_open_bucket(99.5, 100.0, 102.0, 99.0) == "inside_gap_down"
@@ -89,9 +101,19 @@ def test_synthetic_fixture_pipeline():
     assert jan3["hit_onl"] is True
     assert jan3["onl"] == 3985.0
     assert jan3["onh"] == 4015.0
+    # Prior day close 4005 (last day-session tick on 2024-01-02); open 4002 → small gap, filled in range.
+    assert jan3["prior_close"] == 4005.0
+    assert jan3["gap_pct"] is not None and abs(jan3["gap_pct"] - 3.0 / 4005.0 * 100.0) < 1e-9
+    assert jan3["gap_size_bucket"] == "gap_0_to_0p5_pct"
+    assert jan3["gap_filled"] is True
 
     prob = conditional_probabilities(rows)
     assert not prob.empty
+    gap_prob = gap_fill_probabilities(rows)
+    assert len(gap_prob) == 4
+    row0 = gap_prob[gap_prob["gap_bucket"] == "gap_0_to_0p5_pct"].iloc[0]
+    assert int(row0["days_in_bucket"]) >= 1
+    assert int(row0["gap_fill_count"]) >= 1
 
 
 def test_naive_ts_treated_as_chicago():
@@ -106,8 +128,8 @@ def _fixture_path() -> Path:
 
 def test_run_pipeline_sample_window_fewer_or_equal_rows():
     path = _fixture_path()
-    full_daily, _, _, _ = run_pipeline(str(path), chunksize=1000)
-    win_daily, _, _, meta = run_pipeline(str(path), chunksize=1000, max_calendar_days=60)
+    full_daily, _, _, _, _ = run_pipeline(str(path), chunksize=1000)
+    win_daily, _, _, _, meta = run_pipeline(str(path), chunksize=1000, max_calendar_days=60)
     assert len(win_daily) <= len(full_daily)
     assert meta.get("anchor_date") == "2024-01-02"
     assert meta.get("max_calendar_days") == 60
@@ -115,7 +137,7 @@ def test_run_pipeline_sample_window_fewer_or_equal_rows():
 
 def test_run_pipeline_one_calendar_day_excludes_later_days():
     path = _fixture_path()
-    daily, _, _, meta = run_pipeline(str(path), chunksize=1000, max_calendar_days=1)
+    daily, _, _, _, meta = run_pipeline(str(path), chunksize=1000, max_calendar_days=1)
     assert meta["anchor_date"] == "2024-01-02"
     assert meta["last_inclusive_date"] == "2024-01-02"
     days = set(daily["trading_day"].tolist())
@@ -125,7 +147,7 @@ def test_run_pipeline_one_calendar_day_excludes_later_days():
 
 def test_run_pipeline_two_calendar_days_includes_jan3():
     path = _fixture_path()
-    daily, _, _, meta = run_pipeline(str(path), chunksize=1000, max_calendar_days=2)
+    daily, _, _, _, meta = run_pipeline(str(path), chunksize=1000, max_calendar_days=2)
     assert meta["last_inclusive_date"] == "2024-01-03"
     assert len(daily) == 2
 
@@ -133,7 +155,7 @@ def test_run_pipeline_two_calendar_days_includes_jan3():
 def test_post_ib_exceed_flags_synthetic_jan3():
     """IB 4002–4008 (w=6); post-IB 4000/3980/3998 → exceed IBL and lower 1.5, not IBH/upper 1.5."""
     path = _fixture_path()
-    daily, _, _, _ = run_pipeline(str(path), chunksize=1000, max_calendar_days=60)
+    daily, _, _, _, _ = run_pipeline(str(path), chunksize=1000, max_calendar_days=60)
     jan3 = daily[daily["trading_day"] == "2024-01-03"].iloc[0]
     assert jan3["ibh"] == 4008.0
     assert jan3["ibl"] == 4002.0

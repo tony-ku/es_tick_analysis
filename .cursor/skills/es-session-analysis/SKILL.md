@@ -2,16 +2,16 @@
 name: es-session-analysis
 description: >-
   Analyze Investor/RT-style ES (@ES#) tick files for Chicago overnight/day sessions,
-  VPOC, Initial Balance, open classification vs prior day, and conditional hit
-  probabilities, or post-IB extension exceed rates vs IBH/IBL. Use when working with
-  Historical_Data tick exports or session statistics.
+  VPOC, Initial Balance, open classification vs prior day, conditional hit
+  probabilities, post-IB extension exceed rates vs IBH/IBL, or gap-fill rates by
+  gap-size bucket. Use when working with Historical_Data tick exports or session statistics.
 ---
 
 # ES Overnight / Day Session Analysis
 
 ## When to use
 
-- User asks for ONH/ONL/ONMID, overnight VPOC, day VPOC, IBH/IBL, probabilities of hitting those levels conditional on open type, or **post-IB** odds of taking out IBH/IBL or 1.5× IB-width extensions.
+- User asks for ONH/ONL/ONMID, overnight VPOC, day VPOC, IBH/IBL, probabilities of hitting those levels conditional on open type, **post-IB** odds of taking out IBH/IBL or 1.5× IB-width extensions, or **gap fill** odds by gap size (% of prior close).
 - Data is tab-separated tick text (`SYMBOL`, `DATE`, `PRICE`, `TICKVOL`, `BID`, `ASK`) from Investor/RT or compatible exports.
 
 ## Timezone and sessions (America/Chicago)
@@ -52,6 +52,11 @@ description: >-
   - **`post_ib_exceed_ibl`**: `post_ib_low < IBL`
   - **`post_ib_exceed_upper_1p5`**: `post_ib_high > IBH + 1.5 × (IBH − IBL)` when IB width &gt; 0
   - **`post_ib_exceed_lower_1p5`**: `post_ib_low < IBL − 1.5 × (IBH − IBL)` when IB width &gt; 0
+- **Gap vs prior close** (columns `gap_pct`, `gap_filled`, `gap_size_bucket`; only on **gap days**):
+  - **Gap day**: `prior_close` is known, `prior_close > 0`, and **open ≠ prior_close** (flat open excluded).
+  - **Gap size %**: `|open − prior_close| / prior_close × 100`.
+  - **Gap filled**: during today’s day session, `day_low ≤ prior_close ≤ day_high` (same inclusive rule as reference hits).
+  - **Buckets** (stored in `gap_size_bucket`): `(0, 0.5]` → `gap_0_to_0p5_pct`; `(0.5, 1]` → `gap_0p5_to_1_pct`; `(1, 2]` → `gap_1_to_2_pct`; `(2, ∞)` → `gap_gt_2_pct`.
 
 ## Hit definition
 
@@ -79,10 +84,11 @@ For a **sample** of the first **N** calendar days from the first tick (default 6
 
 Outputs:
 
-- `daily_metrics.csv` — per trading day metrics, open bucket, IB, `post_ib_high` / `post_ib_low`, post-IB exceed flags, and reference hit flags.
+- `daily_metrics.csv` — per trading day metrics, open bucket, IB, `post_ib_high` / `post_ib_low`, post-IB exceed flags, reference hit flags, and gap fields (`gap_pct`, `gap_filled`, `gap_size_bucket`).
 - `conditional_probabilities.csv` — P(hit | bucket) per open bucket (`inside_gap_up`, `inside_gap_down`, `above_prior_range`, `below_prior_range`) and each reference level; **`probability_pct`** is 0–100 (same ratio as the formula above).
 - `conditional_probabilities_post_ib.csv` — P(exceed | bucket) for four rows per bucket with **`level`** text like `post-IB high > IBH`, `post-IB low < IBL`, `post-IB high > IBH + 1.5*(IBH-IBL)`, `post-IB low < IBL - 1.5*(IBH-IBL)`; same **`probability_pct`** schema.
-- `conditional_probabilities.md` — reference-level tables, then a **---** rule, then **Post-IB session** (IBH / IBL / 1.5× IB **range**); **% hit**; flags buckets with **&lt; 20** days.
+- `conditional_probabilities_gap_fill.csv` — one row per gap-size bucket: **`gap_bucket`**, **`days_in_bucket`**, **`gap_fill_count`**, **`probability_pct`** (0–100), **`small_sample`** (n &lt; 20 in bucket).
+- `conditional_probabilities.md` — reference-level tables, then **---**, then **Post-IB session**, then **---**, then **Gap fill**; **% hit** / **% filled**; flags buckets with **&lt; 20** days where applicable.
 
 ## Code location
 
