@@ -41,6 +41,8 @@ python -m analysis.run -i Historical_Data/@ES#_Ticks.txt -o output -v
 
 - `daily_metrics.csv`
 - `conditional_probabilities.csv`
+- `conditional_probabilities_post_ib.csv`
+- `conditional_probabilities_gap_fill.csv`
 - `conditional_probabilities.md`
 
 ### `analysis.run_sample` (first N calendar days)
@@ -59,7 +61,7 @@ Example:
 python -m analysis.run_sample --input Historical_Data/@ES#_Ticks.txt --output-dir output_sample --days 360
 ```
 
-On completion, the sample run also prints the resolved anchor and last-inclusive dates. Same three output filenames as the full run.
+On completion, the sample run also prints the resolved anchor and last-inclusive dates. Same output filenames as the full run.
 
 ## Cursor skills
 

@@ -92,3 +92,20 @@ After IB ends (09:30 Chicago), we use only **post-IB** prices in **[09:30, 16:00
 | post-IB low < IBL                  | 41            | 41      | 25   | 60.98% |
 | post-IB high > IBH + 1.5*(IBH-IBL) | 41            | 41      | 5    | 12.20% |
 | post-IB low < IBL - 1.5*(IBH-IBL)  | 41            | 41      | 3    | 7.32%  |
+
+---
+
+# Gap fill: P(fill | gap size)
+
+
+**Gap day**: prior day session close is defined, `prior_close > 0`, and day open ≠ prior close. **Gap size** = `|open − prior_close| / prior_close × 100%`. **Filled**: during today’s day session, `day_low ≤ prior_close ≤ day_high` (same inclusive rule as reference hits).
+
+
+## By gap size bucket **(n<20)**
+
+| Gap size (of prior close)            | Days | Fills | % filled |
+|--------------------------------------|------|-------|----------|
+| 0% < gap ≤ 0.5% (`gap_0_to_0p5_pct`) | 114  | 87    | 76.32%   |
+| 0.5% < gap ≤ 1% (`gap_0p5_to_1_pct`) | 54   | 27    | 50.00%   |
+| 1% < gap ≤ 2% (`gap_1_to_2_pct`)     | 28   | 10    | 35.71%   |
+| gap > 2% (`gap_gt_2_pct`)            | 5    | 1     | 20.00%   |

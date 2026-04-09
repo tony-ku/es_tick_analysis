@@ -38,6 +38,34 @@ OPEN_BUCKET_TITLES = {
     "below_prior_range": "Below prior day range",
 }
 
+# Absolute open vs prior close as % of prior close; non-overlapping ranges.
+GAP_FILL_BUCKET_ORDER = [
+    "gap_0_to_0p5_pct",
+    "gap_0p5_to_1_pct",
+    "gap_1_to_2_pct",
+    "gap_gt_2_pct",
+]
+
+GAP_FILL_BUCKET_TITLES = {
+    "gap_0_to_0p5_pct": "0% < gap ≤ 0.5%",
+    "gap_0p5_to_1_pct": "0.5% < gap ≤ 1%",
+    "gap_1_to_2_pct": "1% < gap ≤ 2%",
+    "gap_gt_2_pct": "gap > 2%",
+}
+
+
+def classify_gap_size_bucket(gap_pct: float) -> str:
+    """Map positive gap size (%) to bucket id; (0,0.5], (0.5,1], (1,2], (2,inf)."""
+    if gap_pct <= 0:
+        raise ValueError("gap_pct must be positive")
+    if gap_pct <= 0.5:
+        return "gap_0_to_0p5_pct"
+    if gap_pct <= 1.0:
+        return "gap_0p5_to_1_pct"
+    if gap_pct <= 2.0:
+        return "gap_1_to_2_pct"
+    return "gap_gt_2_pct"
+
 
 def classify_open_bucket(
     open_px: float,
@@ -269,6 +297,14 @@ def build_daily_rows(
             post_ib_exceed_upper_1p5 = post_hi > upper_1p5
             post_ib_exceed_lower_1p5 = post_lo < lower_1p5
 
+        gap_pct: Optional[float] = None
+        gap_filled: Optional[bool] = None
+        gap_size_bucket: Optional[str] = None
+        if prior_close is not None and prior_close > 0 and open_px != prior_close:
+            gap_pct = abs(open_px - prior_close) / prior_close * 100.0
+            gap_filled = level_hit(lo, hi, prior_close)
+            gap_size_bucket = classify_gap_size_bucket(gap_pct)
+
         row = {
             "trading_day": d.isoformat(),
             "open": open_px,
@@ -300,6 +336,9 @@ def build_daily_rows(
             "post_ib_exceed_ibl": post_ib_exceed_ibl,
             "post_ib_exceed_upper_1p5": post_ib_exceed_upper_1p5,
             "post_ib_exceed_lower_1p5": post_ib_exceed_lower_1p5,
+            "gap_pct": gap_pct,
+            "gap_filled": gap_filled,
+            "gap_size_bucket": gap_size_bucket,
         }
         rows.append(row)
     return rows
@@ -406,6 +445,29 @@ def conditional_probabilities_post_ib(
     return pd.DataFrame(out_rows)
 
 
+def gap_fill_probabilities(rows: List[Dict[str, Any]]) -> pd.DataFrame:
+    """P(gap filled | gap size bucket); gap days only (open != prior_close, prior_close > 0)."""
+    out_rows = []
+    for b in GAP_FILL_BUCKET_ORDER:
+        sub = [r for r in rows if r.get("gap_size_bucket") == b]
+        n = len(sub)
+        fills = [r for r in sub if r.get("gap_filled") is True]
+        misses = [r for r in sub if r.get("gap_filled") is False]
+        n_valid = len(fills) + len(misses)
+        p = (len(fills) / n_valid) if n_valid > 0 else float("nan")
+        pct = (100.0 * p) if pd.notna(p) else float("nan")
+        out_rows.append(
+            {
+                "gap_bucket": b,
+                "days_in_bucket": n,
+                "gap_fill_count": len(fills),
+                "probability_pct": pct,
+                "small_sample": n < 20,
+            }
+        )
+    return pd.DataFrame(out_rows)
+
+
 def _read_csv_chunks(
     input_path: str,
     chunksize: int,
@@ -429,10 +491,10 @@ def run_pipeline(
     chunksize: int = 1_000_000,
     max_calendar_days: Optional[int] = None,
     verbose: bool = False,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict[str, Any]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict[str, Any]]:
     """
     Read tick file in chunks; return (daily_metrics_df, conditional_prob_df,
-    conditional_prob_post_ib_df, meta).
+    conditional_prob_post_ib_df, gap_fill_prob_df, meta).
 
     When max_calendar_days is set, only ticks with Chicago date in
     [anchor_date, anchor_date + max_calendar_days - 1] are processed (anchor = date
@@ -483,7 +545,8 @@ def run_pipeline(
     daily_df = pd.DataFrame(rows)
     prob_df = conditional_probabilities(rows)
     prob_post_ib_df = conditional_probabilities_post_ib(rows)
-    return daily_df, prob_df, prob_post_ib_df, meta
+    prob_gap_fill_df = gap_fill_probabilities(rows)
+    return daily_df, prob_df, prob_post_ib_df, prob_gap_fill_df, meta
 
 
 def _markdown_table(header: List[str], body: List[List[str]]) -> List[str]:
@@ -569,10 +632,47 @@ def probabilities_post_ib_to_markdown(prob_df: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
-def probabilities_combined_markdown(prob_df: pd.DataFrame, prob_post_ib_df: pd.DataFrame) -> str:
-    """Reference-level conditional hits plus post-IB exceed tables."""
-    return (
+def probabilities_gap_fill_to_markdown(prob_gap_df: pd.DataFrame) -> str:
+    """P(prior close touched in day session | gap size % of prior close)."""
+    lines: List[str] = [
+        "# Gap fill: P(fill | gap size)\n",
+        "\n**Gap day**: prior day session close is defined, `prior_close > 0`, and day open ≠ prior close. "
+        "**Gap size** = `|open − prior_close| / prior_close × 100%`. "
+        "**Filled**: during today’s day session, `day_low ≤ prior_close ≤ day_high` (same inclusive rule as reference hits).\n",
+    ]
+    header = ["Gap size (of prior close)", "Days", "Fills", "% filled"]
+    body: List[List[str]] = []
+    flag = " **(n<20)**" if not prob_gap_df.empty and prob_gap_df["small_sample"].any() else ""
+    lines.append(f"\n## By gap size bucket{flag}\n")
+
+    for _, r in prob_gap_df.iterrows():
+        p = r["probability_pct"]
+        ps = f"{p:.2f}%" if pd.notna(p) else "nan"
+        bid = str(r["gap_bucket"])
+        title = GAP_FILL_BUCKET_TITLES.get(bid, bid)
+        body.append(
+            [
+                f"{title} (`{bid}`)",
+                str(int(r["days_in_bucket"])),
+                str(int(r["gap_fill_count"])),
+                ps,
+            ]
+        )
+    lines.extend(_markdown_table(header, body))
+    return "\n".join(lines)
+
+
+def probabilities_combined_markdown(
+    prob_df: pd.DataFrame,
+    prob_post_ib_df: pd.DataFrame,
+    prob_gap_fill_df: Optional[pd.DataFrame] = None,
+) -> str:
+    """Reference-level conditional hits, post-IB exceed tables, optional gap fill."""
+    out = (
         probabilities_to_markdown(prob_df)
         + "\n\n---\n\n"
         + probabilities_post_ib_to_markdown(prob_post_ib_df)
     )
+    if prob_gap_fill_df is not None:
+        out += "\n\n---\n\n" + probabilities_gap_fill_to_markdown(prob_gap_fill_df)
+    return out
