@@ -31,8 +31,27 @@ def test_price_bucket():
     assert price_bucket(4213.22) == 4213.25
 
 
+def test_price_bucket_half_up_not_bankers():
+    # Exact half-tick inputs must round away from zero, not to nearest even.
+    # Banker's rounding would map 4213.125 → 4213.0 and 4213.375 → 4213.5.
+    assert price_bucket(4213.125) == 4213.25
+    assert price_bucket(4213.375) == 4213.5
+
+
 def test_vpoc_tie_midpoint():
     bins = {4000.0: 100.0, 4000.25: 100.0}
+    assert vpoc_from_bins(bins) == 4000.125
+
+
+def test_vpoc_tie_tolerates_float_drift():
+    # Sums accumulated in different orders can differ by a few ULPs; the
+    # two bins should still be treated as tied. `nextafter` manufactures
+    # a single-ULP difference that bare `==` would reject.
+    import math as _math
+    a = 12345.6789
+    b = _math.nextafter(a, a + 1.0)
+    assert a != b
+    bins = {4000.0: a, 4000.25: b}
     assert vpoc_from_bins(bins) == 4000.125
 
 

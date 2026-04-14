@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -11,13 +12,19 @@ from .sessions import as_chicago_ts, ib_session_bounds, price_bucket
 
 
 def vpoc_from_bins(vol_bins: Dict[float, float]) -> Optional[float]:
-    """POC price; ties → midpoint of min and max tied bucket prices."""
+    """POC price; ties → midpoint of min and max tied bucket prices.
+
+    Tolerance-based tie detection: float sums accumulated in different
+    orders can differ by a few ULPs, so exact `==` would silently break
+    true ties. 1e-9 relative tolerance is far below any meaningful
+    volume difference.
+    """
     if not vol_bins:
         return None
     mx = max(vol_bins.values())
     if mx <= 0:
         return None
-    tied = [p for p, v in vol_bins.items() if v == mx]
+    tied = [p for p, v in vol_bins.items() if math.isclose(v, mx, rel_tol=1e-9, abs_tol=0.0)]
     if len(tied) == 1:
         return tied[0]
     return (min(tied) + max(tied)) / 2.0
