@@ -25,17 +25,17 @@ def _is_data_row(sym: Any) -> bool:
 
 # Open vs prior-day session (strict inequalities); order matches stats tables.
 OPEN_BUCKET_ORDER = [
-    "inside_gap_up",
-    "inside_gap_down",
-    "above_prior_range",
-    "below_prior_range",
+    "HIR",
+    "LIR",
+    "HOR",
+    "LOR",
 ]
 
 OPEN_BUCKET_TITLES = {
-    "inside_gap_up": "Inside gap up",
-    "inside_gap_down": "Inside gap down",
-    "above_prior_range": "Above prior day range",
-    "below_prior_range": "Below prior day range",
+    "HIR": "HIR",
+    "LIR": "LIR",
+    "HOR": "HOR",
+    "LOR": "LOR",
 }
 
 # Absolute open vs prior close as % of prior close; non-overlapping ranges.
@@ -75,13 +75,13 @@ def classify_open_bucket(
 ) -> str:
     """Map open to bucket id; strict inequalities else boundary."""
     if open_px > prior_close and open_px < prior_high:
-        return "inside_gap_up"
+        return "HIR"
     if open_px < prior_close and open_px > prior_low:
-        return "inside_gap_down"
+        return "LIR"
     if open_px > prior_close and open_px > prior_high:
-        return "above_prior_range"
+        return "HOR"
     if open_px < prior_close and open_px < prior_low:
-        return "below_prior_range"
+        return "LOR"
     return "boundary"
 
 

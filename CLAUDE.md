@@ -40,7 +40,7 @@ Key modules in [analysis/](analysis/):
 
 Derived-metric semantics that multiple files depend on:
 
-- **Open buckets** (strict inequalities, else `boundary`): `inside_gap_up`, `inside_gap_down`, `above_prior_range`, `below_prior_range`. Defined in `classify_open_bucket`.
+- **Open buckets** (strict inequalities, else `boundary`): `HIR` (Higher Inside Range), `LIR` (Lower Inside Range), `HOR` (Higher Outside Range), `LOR` (Lower Outside Range). Defined in `classify_open_bucket`.
 - **Gap-size buckets** (positive gap %, non-overlapping): `(0, 0.5]`, `(0.5, 1]`, `(1, 2]`, `(2, ∞)`. Defined in `classify_gap_size_bucket`.
 - **Hit** for a reference level `L` = `day_low <= L <= day_high` (inclusive, over the day session only). Seven reference levels: ON VPOC, yDay VPOC, ONL, ONMID, ONH, yDay High, yDay Low.
 - **Post-IB exceed** flags compare `post_ib_high`/`post_ib_low` (09:30–16:00) against IBH/IBL and ±1.5×(IBH−IBL) extensions; `None` when IB or post-IB data is missing (or IB width is 0 for extension rows).

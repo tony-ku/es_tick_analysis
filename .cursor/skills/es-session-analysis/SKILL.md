@@ -41,10 +41,10 @@ description: >-
 - **Yesterday Day VPOC**: VPOC over yesterday’s Day session only.
 - **Open**: First tick at or after 08:30 on the trading day (first `PRICE` in Day session).
 - **Open buckets** (stored in `open_bucket`; strict; otherwise **boundary**):
-  - **`inside_gap_up`**: `open > prior_close` and `open < prior_high` (gap up, still inside yesterday’s range)
-  - **`inside_gap_down`**: `open < prior_close` and `open > prior_low` (gap down, still inside range)
-  - **`above_prior_range`**: `open > prior_close` and `open > prior_high` (opens above yesterday’s high)
-  - **`below_prior_range`**: `open < prior_close` and `open < prior_low` (opens below yesterday’s low)
+  - **`HIR`** (Higher Inside Range): `open > prior_close` and `open < prior_high` (gap up, still inside yesterday’s range)
+  - **`LIR`** (Lower Inside Range): `open < prior_close` and `open > prior_low` (gap down, still inside range)
+  - **`HOR`** (Higher Outside Range): `open > prior_close` and `open > prior_high` (opens above yesterday’s high)
+  - **`LOR`** (Lower Outside Range): `open < prior_close` and `open < prior_low` (opens below yesterday’s low)
 - **IB / IBH / IBL**: First hour of Day session **08:30–09:30** Chicago; IBH/IBL = high/low of `PRICE` in that window.
 - **Post-IB window**: **09:30–16:00** Chicago (remainder of day session after IB ends). **`post_ib_high` / `post_ib_low`**: max/min `PRICE` in that window only.
 - **Post-IB exceed flags** (per day; `None` if IB or post-IB data missing, or IB width is 0 for extension levels):
@@ -85,7 +85,7 @@ For a **sample** of the first **N** calendar days from the first tick (default 6
 Outputs:
 
 - `daily_metrics.csv` — per trading day metrics, open bucket, IB, `post_ib_high` / `post_ib_low`, post-IB exceed flags, reference hit flags, and gap fields (`gap_pct`, `gap_filled`, `gap_size_bucket`).
-- `conditional_probabilities.csv` — P(hit | bucket) per open bucket (`inside_gap_up`, `inside_gap_down`, `above_prior_range`, `below_prior_range`) and each reference level; **`probability_pct`** is 0–100 (same ratio as the formula above).
+- `conditional_probabilities.csv` — P(hit | bucket) per open bucket (`HIR`, `LIR`, `HOR`, `LOR`) and each reference level; **`probability_pct`** is 0–100 (same ratio as the formula above).
 - `conditional_probabilities_post_ib.csv` — P(exceed | bucket) for four rows per bucket with **`level`** text like `post-IB high > IBH`, `post-IB low < IBL`, `post-IB high > IBH + 1.5*(IBH-IBL)`, `post-IB low < IBL - 1.5*(IBH-IBL)`; same **`probability_pct`** schema.
 - `conditional_probabilities_gap_fill.csv` — one row per gap-size bucket: **`gap_bucket`**, **`days_in_bucket`**, **`gap_fill_count`**, **`probability_pct`** (0–100), **`small_sample`** (n &lt; 20 in bucket).
 - `conditional_probabilities.md` — reference-level tables, then **---**, then **Post-IB session**, then **---**, then **Gap fill**; **% hit** / **% filled**; flags buckets with **&lt; 20** days where applicable.
