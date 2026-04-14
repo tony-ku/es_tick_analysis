@@ -1,53 +1,53 @@
 # Conditional hit probabilities P(hit | open bucket)
 
 
-## Inside gap up (`inside_gap_up`)
+## HIR (`HIR`) **(n<20)**
 
-| Level     | Days (bucket) | Defined | Hits | % hit  |
-|-----------|---------------|---------|------|--------|
-| ON_VPOC   | 42            | 42      | 38   | 90.48% |
-| yDay_VPOC | 42            | 42      | 33   | 78.57% |
-| ONL       | 42            | 42      | 26   | 61.90% |
-| ONMID     | 42            | 42      | 31   | 73.81% |
-| ONH       | 42            | 42      | 35   | 83.33% |
-| yDay_High | 42            | 42      | 25   | 59.52% |
-| yDay_Low  | 42            | 42      | 21   | 50.00% |
+| Level     | Days (bucket) | % of total days | Defined | Hits | % hit  |
+|-----------|---------------|-----------------|---------|------|--------|
+| ON_VPOC   | 12            | 29.27%          | 12      | 11   | 91.67% |
+| yDay_VPOC | 12            | 29.27%          | 12      | 8    | 66.67% |
+| ONL       | 12            | 29.27%          | 12      | 7    | 58.33% |
+| ONMID     | 12            | 29.27%          | 12      | 9    | 75.00% |
+| ONH       | 12            | 29.27%          | 12      | 10   | 83.33% |
+| yDay_High | 12            | 29.27%          | 12      | 8    | 66.67% |
+| yDay_Low  | 12            | 29.27%          | 12      | 5    | 41.67% |
 
-## Inside gap down (`inside_gap_down`)
+## LIR (`LIR`) **(n<20)**
 
-| Level     | Days (bucket) | Defined | Hits | % hit  |
-|-----------|---------------|---------|------|--------|
-| ON_VPOC   | 74            | 74      | 67   | 90.54% |
-| yDay_VPOC | 74            | 74      | 56   | 75.68% |
-| ONL       | 74            | 74      | 56   | 75.68% |
-| ONMID     | 74            | 74      | 59   | 79.73% |
-| ONH       | 74            | 74      | 43   | 58.11% |
-| yDay_High | 74            | 74      | 29   | 39.19% |
-| yDay_Low  | 74            | 74      | 43   | 58.11% |
+| Level     | Days (bucket) | % of total days | Defined | Hits | % hit  |
+|-----------|---------------|-----------------|---------|------|--------|
+| ON_VPOC   | 10            | 24.39%          | 10      | 8    | 80.00% |
+| yDay_VPOC | 10            | 24.39%          | 10      | 6    | 60.00% |
+| ONL       | 10            | 24.39%          | 10      | 7    | 70.00% |
+| ONMID     | 10            | 24.39%          | 10      | 8    | 80.00% |
+| ONH       | 10            | 24.39%          | 10      | 6    | 60.00% |
+| yDay_High | 10            | 24.39%          | 10      | 5    | 50.00% |
+| yDay_Low  | 10            | 24.39%          | 10      | 3    | 30.00% |
 
-## Above prior day range (`above_prior_range`)
+## HOR (`HOR`) **(n<20)**
 
-| Level     | Days (bucket) | Defined | Hits | % hit  |
-|-----------|---------------|---------|------|--------|
-| ON_VPOC   | 44            | 44      | 34   | 77.27% |
-| yDay_VPOC | 44            | 44      | 17   | 38.64% |
-| ONL       | 44            | 44      | 15   | 34.09% |
-| ONMID     | 44            | 44      | 26   | 59.09% |
-| ONH       | 44            | 44      | 34   | 77.27% |
-| yDay_High | 44            | 44      | 27   | 61.36% |
-| yDay_Low  | 44            | 44      | 5    | 11.36% |
+| Level     | Days (bucket) | % of total days | Defined | Hits | % hit  |
+|-----------|---------------|-----------------|---------|------|--------|
+| ON_VPOC   | 9             | 21.95%          | 9       | 5    | 55.56% |
+| yDay_VPOC | 9             | 21.95%          | 9       | 2    | 22.22% |
+| ONL       | 9             | 21.95%          | 9       | 1    | 11.11% |
+| ONMID     | 9             | 21.95%          | 9       | 5    | 55.56% |
+| ONH       | 9             | 21.95%          | 9       | 7    | 77.78% |
+| yDay_High | 9             | 21.95%          | 9       | 6    | 66.67% |
+| yDay_Low  | 9             | 21.95%          | 9       | 0    | 0.00%  |
 
-## Below prior day range (`below_prior_range`)
+## LOR (`LOR`) **(n<20)**
 
-| Level     | Days (bucket) | Defined | Hits | % hit  |
-|-----------|---------------|---------|------|--------|
-| ON_VPOC   | 41            | 41      | 35   | 85.37% |
-| yDay_VPOC | 41            | 41      | 18   | 43.90% |
-| ONL       | 41            | 41      | 28   | 68.29% |
-| ONMID     | 41            | 41      | 31   | 75.61% |
-| ONH       | 41            | 41      | 10   | 24.39% |
-| yDay_High | 41            | 41      | 4    | 9.76%  |
-| yDay_Low  | 41            | 41      | 27   | 65.85% |
+| Level     | Days (bucket) | % of total days | Defined | Hits | % hit  |
+|-----------|---------------|-----------------|---------|------|--------|
+| ON_VPOC   | 10            | 24.39%          | 10      | 8    | 80.00% |
+| yDay_VPOC | 10            | 24.39%          | 10      | 6    | 60.00% |
+| ONL       | 10            | 24.39%          | 10      | 7    | 70.00% |
+| ONMID     | 10            | 24.39%          | 10      | 7    | 70.00% |
+| ONH       | 10            | 24.39%          | 10      | 3    | 30.00% |
+| yDay_High | 10            | 24.39%          | 10      | 2    | 20.00% |
+| yDay_Low  | 10            | 24.39%          | 10      | 7    | 70.00% |
 
 ---
 
@@ -57,41 +57,41 @@
 After IB ends (09:30 Chicago), we use only **post-IB** prices in **[09:30, 16:00)**. **IBH** / **IBL** come from the first hour **[08:30, 09:30)**. **1.5× IB range** means **1.5 × (IBH − IBL)** added above IBH or subtracted below IBL (not 1.5× price). A day is skipped for a row if IB or post-IB range is missing, or IB width is 0 for the extension rows.
 
 
-## Inside gap up (`inside_gap_up`)
+## HIR (`HIR`) **(n<20)**
 
-| Level                              | Days (bucket) | Defined | Hits | % hit  |
-|------------------------------------|---------------|---------|------|--------|
-| post-IB high > IBH                 | 42            | 42      | 27   | 64.29% |
-| post-IB low < IBL                  | 42            | 42      | 24   | 57.14% |
-| post-IB high > IBH + 1.5*(IBH-IBL) | 42            | 42      | 7    | 16.67% |
-| post-IB low < IBL - 1.5*(IBH-IBL)  | 42            | 42      | 11   | 26.19% |
+| Level                              | Days (bucket) | % of total days | Defined | Hits | % hit  |
+|------------------------------------|---------------|-----------------|---------|------|--------|
+| post-IB high > IBH                 | 12            | 29.27%          | 12      | 7    | 58.33% |
+| post-IB low < IBL                  | 12            | 29.27%          | 12      | 7    | 58.33% |
+| post-IB high > IBH + 1.5*(IBH-IBL) | 12            | 29.27%          | 12      | 2    | 16.67% |
+| post-IB low < IBL - 1.5*(IBH-IBL)  | 12            | 29.27%          | 12      | 3    | 25.00% |
 
-## Inside gap down (`inside_gap_down`)
+## LIR (`LIR`) **(n<20)**
 
-| Level                              | Days (bucket) | Defined | Hits | % hit  |
-|------------------------------------|---------------|---------|------|--------|
-| post-IB high > IBH                 | 74            | 74      | 45   | 60.81% |
-| post-IB low < IBL                  | 74            | 74      | 47   | 63.51% |
-| post-IB high > IBH + 1.5*(IBH-IBL) | 74            | 74      | 8    | 10.81% |
-| post-IB low < IBL - 1.5*(IBH-IBL)  | 74            | 74      | 6    | 8.11%  |
+| Level                              | Days (bucket) | % of total days | Defined | Hits | % hit  |
+|------------------------------------|---------------|-----------------|---------|------|--------|
+| post-IB high > IBH                 | 10            | 24.39%          | 10      | 5    | 50.00% |
+| post-IB low < IBL                  | 10            | 24.39%          | 10      | 6    | 60.00% |
+| post-IB high > IBH + 1.5*(IBH-IBL) | 10            | 24.39%          | 10      | 1    | 10.00% |
+| post-IB low < IBL - 1.5*(IBH-IBL)  | 10            | 24.39%          | 10      | 1    | 10.00% |
 
-## Above prior day range (`above_prior_range`)
+## HOR (`HOR`) **(n<20)**
 
-| Level                              | Days (bucket) | Defined | Hits | % hit  |
-|------------------------------------|---------------|---------|------|--------|
-| post-IB high > IBH                 | 44            | 44      | 31   | 70.45% |
-| post-IB low < IBL                  | 44            | 44      | 24   | 54.55% |
-| post-IB high > IBH + 1.5*(IBH-IBL) | 44            | 44      | 3    | 6.82%  |
-| post-IB low < IBL - 1.5*(IBH-IBL)  | 44            | 44      | 3    | 6.82%  |
+| Level                              | Days (bucket) | % of total days | Defined | Hits | % hit  |
+|------------------------------------|---------------|-----------------|---------|------|--------|
+| post-IB high > IBH                 | 9             | 21.95%          | 9       | 7    | 77.78% |
+| post-IB low < IBL                  | 9             | 21.95%          | 9       | 4    | 44.44% |
+| post-IB high > IBH + 1.5*(IBH-IBL) | 9             | 21.95%          | 9       | 1    | 11.11% |
+| post-IB low < IBL - 1.5*(IBH-IBL)  | 9             | 21.95%          | 9       | 0    | 0.00%  |
 
-## Below prior day range (`below_prior_range`)
+## LOR (`LOR`) **(n<20)**
 
-| Level                              | Days (bucket) | Defined | Hits | % hit  |
-|------------------------------------|---------------|---------|------|--------|
-| post-IB high > IBH                 | 41            | 41      | 27   | 65.85% |
-| post-IB low < IBL                  | 41            | 41      | 25   | 60.98% |
-| post-IB high > IBH + 1.5*(IBH-IBL) | 41            | 41      | 5    | 12.20% |
-| post-IB low < IBL - 1.5*(IBH-IBL)  | 41            | 41      | 3    | 7.32%  |
+| Level                              | Days (bucket) | % of total days | Defined | Hits | % hit  |
+|------------------------------------|---------------|-----------------|---------|------|--------|
+| post-IB high > IBH                 | 10            | 24.39%          | 10      | 6    | 60.00% |
+| post-IB low < IBL                  | 10            | 24.39%          | 10      | 4    | 40.00% |
+| post-IB high > IBH + 1.5*(IBH-IBL) | 10            | 24.39%          | 10      | 1    | 10.00% |
+| post-IB low < IBL - 1.5*(IBH-IBL)  | 10            | 24.39%          | 10      | 1    | 10.00% |
 
 ---
 
@@ -103,9 +103,9 @@ After IB ends (09:30 Chicago), we use only **post-IB** prices in **[09:30, 16:00
 
 ## By gap size bucket **(n<20)**
 
-| Gap size (of prior close)            | Days | Fills | % filled |
-|--------------------------------------|------|-------|----------|
-| 0% < gap ≤ 0.5% (`gap_0_to_0p5_pct`) | 114  | 87    | 76.32%   |
-| 0.5% < gap ≤ 1% (`gap_0p5_to_1_pct`) | 54   | 27    | 50.00%   |
-| 1% < gap ≤ 2% (`gap_1_to_2_pct`)     | 28   | 10    | 35.71%   |
-| gap > 2% (`gap_gt_2_pct`)            | 5    | 1     | 20.00%   |
+| Gap size (of prior close)            | Days | % of total days | Fills | % filled |
+|--------------------------------------|------|-----------------|-------|----------|
+| 0% < gap ≤ 0.5% (`gap_0_to_0p5_pct`) | 17   | 41.46%          | 13    | 76.47%   |
+| 0.5% < gap ≤ 1% (`gap_0p5_to_1_pct`) | 12   | 29.27%          | 8     | 66.67%   |
+| 1% < gap ≤ 2% (`gap_1_to_2_pct`)     | 9    | 21.95%          | 1     | 11.11%   |
+| gap > 2% (`gap_gt_2_pct`)            | 2    | 4.88%           | 0     | 0.00%    |
