@@ -2,6 +2,14 @@
 
 Python tools for analyzing Investor/RT-style ES (`@ES#`) tick files: Chicago overnight (17:00–08:30) and day (08:30–16:00) sessions, ONH/ONL/ONMID, overnight and day VPOC, Initial Balance (08:30–09:30), open classification vs prior day, and conditional hit probabilities.
 
+## Published report
+
+A formatted, human-readable summary of the latest full-history run is checked into the repo root:
+
+- **[ES_Conditional_Probabilities_Report.md](ES_Conditional_Probabilities_Report.md)** — reference-level hit probabilities by open bucket (HIR / LIR / HOR / LOR), post-IB extension probabilities, and gap-fill probabilities by gap size, over **5,308 trading days (2005-09-07 → 2026-04-10)**.
+
+This report is provided **with no warranties of any kind**. See the disclaimer at the bottom of this README and inside the report itself.
+
 ## Data layout
 
 **You are responsible for placing your tick export on disk.** The examples below assume a folder named `Historical_Data` at the repo root and a file such as `@ES#_Ticks.txt`. Create `Historical_Data` if it does not exist and copy your tab-separated tick file there (or pass any other path to `--input` / `-i`).
@@ -73,6 +81,18 @@ On completion, the sample run also prints the resolved anchor and last-inclusive
 ```bash
 python -m pytest tests/ -v
 ```
+
+## ⚠ Disclaimer
+
+**The code, data, and reports in this repository — including [ES_Conditional_Probabilities_Report.md](ES_Conditional_Probabilities_Report.md) — are provided for educational and informational purposes only. They are not investment advice, a solicitation, or a recommendation to buy, sell, or hold any security, futures contract, or other financial instrument.**
+
+- Past statistical behavior does **not** predict future results. Probabilities reported here are historical frequencies observed in a specific dataset over a specific window; market structure, liquidity, session hours, and contract specifications can and do change.
+- Futures trading involves **substantial risk of loss** and is not suitable for all investors. You can lose more than your initial deposit.
+- Outputs are derived from a single tick source (`@ES#` continuous contract) and have **not been independently audited**. Data errors, missed ticks, session-boundary edge cases, contract rolls, and holiday/half-session handling may materially affect the numbers.
+- No backtest, commission, slippage, margin, or execution-cost model is applied. Live trading results will differ from any naive strategy implied by these probabilities.
+- The author makes **no representation or warranty**, express or implied, regarding the accuracy, completeness, or fitness for any particular purpose of this software or its outputs. Use at your own risk.
+
+**Consult a licensed financial professional before making any trading decision.**
 
 ## License
 
