@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from datetime import date, datetime, time, timedelta
 from typing import Optional
 from zoneinfo import ZoneInfo
@@ -17,8 +18,8 @@ TICK_SIZE = 0.25
 
 
 def price_bucket(price: float) -> float:
-    """ES tick bucket center (0.25)."""
-    return round(price * 4.0) / 4.0
+    """ES tick bucket center (0.25). Half-up rounding (not banker's)."""
+    return math.floor(price * 4.0 + 0.5) / 4.0
 
 
 def combine_chicago(d: date, t: time) -> datetime:
