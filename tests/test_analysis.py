@@ -180,16 +180,18 @@ def test_run_pipeline_one_calendar_day_excludes_later_days():
     daily, _, _, _, meta = run_pipeline(str(path), chunksize=1000, max_calendar_days=1)
     assert meta["anchor_date"] == "2024-01-02"
     assert meta["last_inclusive_date"] == "2024-01-02"
-    days = set(daily["trading_day"].tolist())
-    assert days == {"2024-01-02"}
-    assert len(daily) == 1
+    # First day has no prior context → dropped; window is single-day so no rows.
+    assert len(daily) == 0
 
 
 def test_run_pipeline_two_calendar_days_includes_jan3():
     path = _fixture_path()
     daily, _, _, _, meta = run_pipeline(str(path), chunksize=1000, max_calendar_days=2)
     assert meta["last_inclusive_date"] == "2024-01-03"
-    assert len(daily) == 2
+    # Jan 2 dropped (first day, no prior); Jan 3 kept.
+    days = set(daily["trading_day"].tolist())
+    assert days == {"2024-01-03"}
+    assert len(daily) == 1
 
 
 def test_post_ib_exceed_flags_synthetic_jan3():
@@ -201,7 +203,7 @@ def test_post_ib_exceed_flags_synthetic_jan3():
     assert jan3["ibl"] == 4002.0
     assert jan3["post_ib_high"] == 4000.0
     assert jan3["post_ib_low"] == 3980.0
-    assert jan3["post_ib_exceed_ibh"] is False
-    assert jan3["post_ib_exceed_ibl"] is True
-    assert jan3["post_ib_exceed_upper_1p5"] is False
-    assert jan3["post_ib_exceed_lower_1p5"] is True
+    assert bool(jan3["post_ib_exceed_ibh"]) is False
+    assert bool(jan3["post_ib_exceed_ibl"]) is True
+    assert bool(jan3["post_ib_exceed_upper_1p5"]) is False
+    assert bool(jan3["post_ib_exceed_lower_1p5"]) is True

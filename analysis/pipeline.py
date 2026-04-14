@@ -264,14 +264,9 @@ def build_daily_rows(
         if open_px is None:
             continue
 
-        if (
-            prior_close is not None
-            and prior_high is not None
-            and prior_low is not None
-        ):
-            bucket = classify_open_bucket(open_px, prior_close, prior_high, prior_low)
-        else:
-            bucket = "incomplete"
+        if prior_close is None or prior_high is None or prior_low is None:
+            continue
+        bucket = classify_open_bucket(open_px, prior_close, prior_high, prior_low)
 
         lo, hi = day.min_p, day.max_p
 

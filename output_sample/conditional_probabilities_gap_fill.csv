@@ -1,5 +1,5 @@
-gap_bucket,days_in_bucket,gap_fill_count,probability_pct,small_sample
-gap_0_to_0p5_pct,114,87,76.31578947368422,False
-gap_0p5_to_1_pct,54,27,50.0,False
-gap_1_to_2_pct,28,10,35.714285714285715,False
-gap_gt_2_pct,5,1,20.0,True
+gap_bucket,days_in_bucket,pct_of_total_days,gap_fill_count,probability_pct,small_sample
+gap_0_to_0p5_pct,17,41.46341463414634,13,76.47058823529412,True
+gap_0p5_to_1_pct,12,29.26829268292683,8,66.66666666666666,True
+gap_1_to_2_pct,9,21.951219512195124,1,11.11111111111111,True
+gap_gt_2_pct,2,4.878048780487805,0,0.0,True
