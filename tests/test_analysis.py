@@ -69,10 +69,10 @@ def test_classify_gap_size_bucket_boundaries():
 
 
 def test_classify_open_bucket():
-    assert classify_open_bucket(100.5, 100.0, 102.0, 99.0) == "inside_gap_up"
-    assert classify_open_bucket(99.5, 100.0, 102.0, 99.0) == "inside_gap_down"
-    assert classify_open_bucket(103.0, 100.0, 102.0, 99.0) == "above_prior_range"
-    assert classify_open_bucket(98.0, 100.0, 102.0, 99.0) == "below_prior_range"
+    assert classify_open_bucket(100.5, 100.0, 102.0, 99.0) == "HIR"
+    assert classify_open_bucket(99.5, 100.0, 102.0, 99.0) == "LIR"
+    assert classify_open_bucket(103.0, 100.0, 102.0, 99.0) == "HOR"
+    assert classify_open_bucket(98.0, 100.0, 102.0, 99.0) == "LOR"
     assert classify_open_bucket(100.0, 100.0, 102.0, 99.0) == "boundary"
 
 
@@ -96,7 +96,7 @@ def test_synthetic_fixture_pipeline():
     rows = build_daily_rows(on_aggs, day_aggs)
     by_day = {r["trading_day"]: r for r in rows}
     jan3 = by_day["2024-01-03"]
-    assert jan3["open_bucket"] == "inside_gap_down"
+    assert jan3["open_bucket"] == "LIR"
     assert jan3["hit_onmid"] in (True, False, None)
     assert jan3["hit_onl"] is True
     assert jan3["onl"] == 3985.0

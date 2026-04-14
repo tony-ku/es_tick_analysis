@@ -57,7 +57,7 @@ Levels (export `level` column): `ON_VPOC`, `yDay_VPOC`, `ONL`, `ONMID`, `ONH`, `
 
 ## Conditional probability
 
-For bucket `B` in {`inside_gap_up`, `inside_gap_down`, `above_prior_range`, `below_prior_range`} and level `L`:
+For bucket `B` in {`HIR`, `LIR`, `HOR`, `LOR`} and level `L`:
 
 ```
 P(hit L | B) = count(days with bucket B and hit L) / count(days with bucket B)
