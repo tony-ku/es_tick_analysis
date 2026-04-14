@@ -73,7 +73,13 @@ def classify_open_bucket(
     prior_high: float,
     prior_low: float,
 ) -> str:
-    """Map open to bucket id; strict inequalities else boundary."""
+    """Map open to bucket id. Equality tie-breaks: == close → HIR, == prior_high → HIR, == prior_low → LIR."""
+    if open_px == prior_close:
+        return "HIR"
+    if open_px == prior_high:
+        return "HIR"
+    if open_px == prior_low:
+        return "LIR"
     if open_px > prior_close and open_px < prior_high:
         return "HIR"
     if open_px < prior_close and open_px > prior_low:
@@ -227,15 +233,16 @@ def build_daily_rows(
     on_aggs: Dict[date, OvernightAgg],
     day_aggs: Dict[date, DaySessionAgg],
 ) -> List[Dict[str, Any]]:
-    """One row per trading day that has a day session; needs prior calendar day for context."""
+    """One row per trading day that has a day session; prior context is the most recent prior trading day with data (Friday for Monday, last pre-holiday day post-holiday)."""
     rows: List[Dict[str, Any]] = []
+    prev_valid: Optional[DaySessionAgg] = None
     for d in sorted(day_aggs.keys()):
         day = day_aggs[d]
         if day.min_p == float("inf"):
             continue
 
-        prior = d - timedelta(days=1)
-        prior_day = day_aggs.get(prior)
+        prior_day = prev_valid
+        prev_valid = day
 
         on = on_aggs.get(d)
         if on is None or on.min_p == float("inf"):
@@ -383,13 +390,15 @@ def conditional_probabilities(
     rows: List[Dict[str, Any]],
     buckets: Optional[List[str]] = None,
 ) -> pd.DataFrame:
-    """Rows: bucket; cols: level, counts, probability_pct (0–100)."""
+    """Rows: bucket; cols: level, counts, probability_pct (0–100), pct_of_total_days (bucket share of all daily rows)."""
     if buckets is None:
         buckets = list(OPEN_BUCKET_ORDER)
+    total_days = len(rows)
     out_rows = []
     for b in buckets:
         sub = [r for r in rows if r.get("open_bucket") == b]
         n = len(sub)
+        share = (100.0 * n / total_days) if total_days > 0 else float("nan")
         for key, label in zip(LEVEL_KEYS, LEVEL_LABELS):
             hits = [r for r in sub if r.get(key) is True]
             miss = [r for r in sub if r.get(key) is False]
@@ -402,6 +411,7 @@ def conditional_probabilities(
                     "bucket": b,
                     "level": label,
                     "days_in_bucket": n,
+                    "pct_of_total_days": share,
                     "days_level_defined": n_valid,
                     "days_undefined_level": len(undef),
                     "hit_count": len(hits),
@@ -419,10 +429,12 @@ def conditional_probabilities_post_ib(
     """P(exceed level in post-IB window | open bucket); same schema as conditional_probabilities."""
     if buckets is None:
         buckets = list(OPEN_BUCKET_ORDER)
+    total_days = len(rows)
     out_rows = []
     for b in buckets:
         sub = [r for r in rows if r.get("open_bucket") == b]
         n = len(sub)
+        share = (100.0 * n / total_days) if total_days > 0 else float("nan")
         for key, label in zip(POST_IB_LEVEL_KEYS, POST_IB_LEVEL_LABELS):
             hits = [r for r in sub if r.get(key) is True]
             miss = [r for r in sub if r.get(key) is False]
@@ -435,6 +447,7 @@ def conditional_probabilities_post_ib(
                     "bucket": b,
                     "level": label,
                     "days_in_bucket": n,
+                    "pct_of_total_days": share,
                     "days_level_defined": n_valid,
                     "days_undefined_level": len(undef),
                     "hit_count": len(hits),
@@ -446,11 +459,13 @@ def conditional_probabilities_post_ib(
 
 
 def gap_fill_probabilities(rows: List[Dict[str, Any]]) -> pd.DataFrame:
-    """P(gap filled | gap size bucket); gap days only (open != prior_close, prior_close > 0)."""
+    """P(gap filled | gap size bucket); gap days only (open != prior_close, prior_close > 0). pct_of_total_days is share of all daily rows, not gap-days only."""
+    total_days = len(rows)
     out_rows = []
     for b in GAP_FILL_BUCKET_ORDER:
         sub = [r for r in rows if r.get("gap_size_bucket") == b]
         n = len(sub)
+        share = (100.0 * n / total_days) if total_days > 0 else float("nan")
         fills = [r for r in sub if r.get("gap_filled") is True]
         misses = [r for r in sub if r.get("gap_filled") is False]
         n_valid = len(fills) + len(misses)
@@ -460,6 +475,7 @@ def gap_fill_probabilities(rows: List[Dict[str, Any]]) -> pd.DataFrame:
             {
                 "gap_bucket": b,
                 "days_in_bucket": n,
+                "pct_of_total_days": share,
                 "gap_fill_count": len(fills),
                 "probability_pct": pct,
                 "small_sample": n < 20,
@@ -569,7 +585,7 @@ def _markdown_table(header: List[str], body: List[List[str]]) -> List[str]:
 def probabilities_to_markdown(prob_df: pd.DataFrame) -> str:
     """Pivot-style markdown table for readability (aligned columns)."""
     lines: List[str] = ["# Conditional hit probabilities P(hit | open bucket)\n"]
-    header = ["Level", "Days (bucket)", "Defined", "Hits", "% hit"]
+    header = ["Level", "Days (bucket)", "% of total days", "Defined", "Hits", "% hit"]
 
     for b in OPEN_BUCKET_ORDER:
         sub = prob_df[prob_df["bucket"] == b]
@@ -583,10 +599,13 @@ def probabilities_to_markdown(prob_df: pd.DataFrame) -> str:
         for _, r in sub.iterrows():
             p = r["probability_pct"]
             ps = f"{p:.2f}%" if pd.notna(p) else "nan"
+            share = r["pct_of_total_days"]
+            ss = f"{share:.2f}%" if pd.notna(share) else "nan"
             body.append(
                 [
                     str(r["level"]),
                     str(int(r["days_in_bucket"])),
+                    ss,
                     str(int(r["days_level_defined"])),
                     str(int(r["hit_count"])),
                     ps,
@@ -605,7 +624,7 @@ def probabilities_post_ib_to_markdown(prob_df: pd.DataFrame) -> str:
         "**1.5× IB range** means **1.5 × (IBH − IBL)** added above IBH or subtracted below IBL (not 1.5× price). "
         "A day is skipped for a row if IB or post-IB range is missing, or IB width is 0 for the extension rows.\n",
     ]
-    header = ["Level", "Days (bucket)", "Defined", "Hits", "% hit"]
+    header = ["Level", "Days (bucket)", "% of total days", "Defined", "Hits", "% hit"]
 
     for b in OPEN_BUCKET_ORDER:
         sub = prob_df[prob_df["bucket"] == b]
@@ -619,10 +638,13 @@ def probabilities_post_ib_to_markdown(prob_df: pd.DataFrame) -> str:
         for _, r in sub.iterrows():
             p = r["probability_pct"]
             ps = f"{p:.2f}%" if pd.notna(p) else "nan"
+            share = r["pct_of_total_days"]
+            ss = f"{share:.2f}%" if pd.notna(share) else "nan"
             body.append(
                 [
                     str(r["level"]),
                     str(int(r["days_in_bucket"])),
+                    ss,
                     str(int(r["days_level_defined"])),
                     str(int(r["hit_count"])),
                     ps,
@@ -640,7 +662,7 @@ def probabilities_gap_fill_to_markdown(prob_gap_df: pd.DataFrame) -> str:
         "**Gap size** = `|open − prior_close| / prior_close × 100%`. "
         "**Filled**: during today’s day session, `day_low ≤ prior_close ≤ day_high` (same inclusive rule as reference hits).\n",
     ]
-    header = ["Gap size (of prior close)", "Days", "Fills", "% filled"]
+    header = ["Gap size (of prior close)", "Days", "% of total days", "Fills", "% filled"]
     body: List[List[str]] = []
     flag = " **(n<20)**" if not prob_gap_df.empty and prob_gap_df["small_sample"].any() else ""
     lines.append(f"\n## By gap size bucket{flag}\n")
@@ -648,12 +670,15 @@ def probabilities_gap_fill_to_markdown(prob_gap_df: pd.DataFrame) -> str:
     for _, r in prob_gap_df.iterrows():
         p = r["probability_pct"]
         ps = f"{p:.2f}%" if pd.notna(p) else "nan"
+        share = r["pct_of_total_days"]
+        ss = f"{share:.2f}%" if pd.notna(share) else "nan"
         bid = str(r["gap_bucket"])
         title = GAP_FILL_BUCKET_TITLES.get(bid, bid)
         body.append(
             [
                 f"{title} (`{bid}`)",
                 str(int(r["days_in_bucket"])),
+                ss,
                 str(int(r["gap_fill_count"])),
                 ps,
             ]

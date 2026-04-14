@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from analysis.aggregates import OvernightAgg, vpoc_from_bins
+from analysis.aggregates import DaySessionAgg, OvernightAgg, vpoc_from_bins
 from analysis.pipeline import (
     build_daily_rows,
     classify_gap_size_bucket,
@@ -73,7 +73,39 @@ def test_classify_open_bucket():
     assert classify_open_bucket(99.5, 100.0, 102.0, 99.0) == "LIR"
     assert classify_open_bucket(103.0, 100.0, 102.0, 99.0) == "HOR"
     assert classify_open_bucket(98.0, 100.0, 102.0, 99.0) == "LOR"
-    assert classify_open_bucket(100.0, 100.0, 102.0, 99.0) == "boundary"
+    # Equality tie-breaks: open == prior_close / prior_high → HIR; open == prior_low → LIR.
+    assert classify_open_bucket(100.0, 100.0, 102.0, 99.0) == "HIR"
+    assert classify_open_bucket(102.0, 100.0, 102.0, 99.0) == "HIR"
+    assert classify_open_bucket(99.0, 100.0, 102.0, 99.0) == "LIR"
+
+
+def _fake_day(first_price: float, last_price: float, lo: float, hi: float) -> DaySessionAgg:
+    """Minimal DaySessionAgg populated directly (bypasses session-bounds gating)."""
+    d = DaySessionAgg()
+    d.min_p = lo
+    d.max_p = hi
+    d.first_price = first_price
+    d.last_price = last_price
+    d.first_ts = datetime(2024, 1, 1, 8, 30, tzinfo=CHICAGO)
+    d.last_ts = datetime(2024, 1, 1, 15, 59, tzinfo=CHICAGO)
+    return d
+
+
+def test_prior_trading_day_is_previous_trading_day_not_calendar_day():
+    """Monday's prior context must come from Friday (skipping Sat/Sun), not Sunday."""
+    from analysis.pipeline import build_daily_rows
+
+    day_aggs = {
+        date(2024, 5, 17): _fake_day(4000.0, 4010.0, 3995.0, 4015.0),  # Friday
+        date(2024, 5, 20): _fake_day(4012.0, 4020.0, 4008.0, 4025.0),  # Monday
+    }
+    rows = build_daily_rows({}, day_aggs)
+    by_day = {r["trading_day"]: r for r in rows}
+    mon = by_day["2024-05-20"]
+    assert mon["prior_close"] == 4010.0  # Friday's last_price, not None
+    assert mon["prior_day_high"] == 4015.0
+    assert mon["prior_day_low"] == 3995.0
+    assert mon["open_bucket"] != "incomplete"
 
 
 def test_level_hit():
@@ -109,8 +141,16 @@ def test_synthetic_fixture_pipeline():
 
     prob = conditional_probabilities(rows)
     assert not prob.empty
+    assert "pct_of_total_days" in prob.columns
+    # Each bucket row's share = days_in_bucket / total_days * 100.
+    total = len(rows)
+    for _, r in prob.iterrows():
+        expected = 100.0 * int(r["days_in_bucket"]) / total
+        assert abs(float(r["pct_of_total_days"]) - expected) < 1e-9
+
     gap_prob = gap_fill_probabilities(rows)
     assert len(gap_prob) == 4
+    assert "pct_of_total_days" in gap_prob.columns
     row0 = gap_prob[gap_prob["gap_bucket"] == "gap_0_to_0p5_pct"].iloc[0]
     assert int(row0["days_in_bucket"]) >= 1
     assert int(row0["gap_fill_count"]) >= 1
