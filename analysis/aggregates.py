@@ -6,9 +6,11 @@ import math
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from .sessions import as_chicago_ts, ib_session_bounds, price_bucket
+
+ES_TICK = 0.25
 
 
 def vpoc_from_bins(vol_bins: Dict[float, float]) -> Optional[float]:
@@ -28,6 +30,65 @@ def vpoc_from_bins(vol_bins: Dict[float, float]) -> Optional[float]:
     if len(tied) == 1:
         return tied[0]
     return (min(tied) + max(tied)) / 2.0
+
+
+def value_area_from_bins(
+    vol_bins: Dict[float, float],
+    target_pct: float = 0.70,
+) -> Tuple[Optional[float], Optional[float]]:
+    """Steidlmayer 70% value area over 0.25 price buckets.
+
+    Seed at POC (upper bucket on POC tie). Each step, compare volume of the
+    two buckets immediately above the developing VA to the two immediately
+    below; add the larger pair. Tie → extend upward. When one side has no
+    buckets left with volume, extend the other. Stop when VA volume ≥ 70%
+    of day total. Returns (VAH, VAL).
+    """
+    if not vol_bins:
+        return (None, None)
+    total = sum(vol_bins.values())
+    if total <= 0:
+        return (None, None)
+    target = total * target_pct
+
+    mx = max(vol_bins.values())
+    tied = sorted(
+        p for p, v in vol_bins.items()
+        if math.isclose(v, mx, rel_tol=1e-9, abs_tol=0.0)
+    )
+    poc = tied[-1]  # upper bucket on POC tie
+
+    hi_px = max(vol_bins.keys())
+    lo_px = min(vol_bins.keys())
+    va_hi = va_lo = poc
+    va_vol = vol_bins[poc]
+
+    def vol_at(p: float) -> float:
+        return vol_bins.get(price_bucket(p), 0.0)
+
+    while va_vol < target:
+        up_exhausted = va_hi >= hi_px
+        dn_exhausted = va_lo <= lo_px
+        if up_exhausted and dn_exhausted:
+            break
+
+        up_sum = vol_at(va_hi + ES_TICK) + vol_at(va_hi + 2 * ES_TICK)
+        dn_sum = vol_at(va_lo - ES_TICK) + vol_at(va_lo - 2 * ES_TICK)
+
+        if up_exhausted:
+            va_lo -= 2 * ES_TICK
+            va_vol += dn_sum
+        elif dn_exhausted:
+            va_hi += 2 * ES_TICK
+            va_vol += up_sum
+        elif up_sum >= dn_sum:  # upper on tie
+            va_hi += 2 * ES_TICK
+            va_vol += up_sum
+        else:
+            va_lo -= 2 * ES_TICK
+            va_vol += dn_sum
+
+    return (va_hi, va_lo)
 
 
 @dataclass
@@ -100,6 +161,9 @@ class DaySessionAgg:
 
     def day_vpoc(self) -> Optional[float]:
         return vpoc_from_bins(dict(self.vol_bins))
+
+    def day_value_area(self) -> Tuple[Optional[float], Optional[float]]:
+        return value_area_from_bins(dict(self.vol_bins))
 
     def ibh(self) -> Optional[float]:
         if self.ib_min == float("inf"):
