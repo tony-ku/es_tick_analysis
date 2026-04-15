@@ -53,6 +53,9 @@ Outputs (written to `--output-dir`): `daily_metrics.csv`, `conditional_probabili
 
 Tick file timestamps are **naive** and interpreted as **America/Chicago** — `as_chicago_ts` attaches the zone without converting. `@ES#` is a continuous contract; roll discontinuities are not adjusted. Only rows with `TICKVOL > 0` contribute to VPOC; high/low use all ticks.
 
-## Cursor skills
+## Skills
 
-[.cursor/skills/es-session-analysis/SKILL.md](.cursor/skills/es-session-analysis/SKILL.md) and [.cursor/skills/es-session-analysis-sample/SKILL.md](.cursor/skills/es-session-analysis-sample/SKILL.md) document the same session/metric conventions for the Cursor environment and are the canonical reference when the definitions above feel ambiguous.
+Canonical session/metric conventions live in the skill files — consult them when definitions above feel ambiguous:
+
+- Claude Code: [.claude/skills/es-session-analysis/SKILL.md](.claude/skills/es-session-analysis/SKILL.md), [.claude/skills/es-session-analysis/reference.md](.claude/skills/es-session-analysis/reference.md), [.claude/skills/es-session-analysis-sample/SKILL.md](.claude/skills/es-session-analysis-sample/SKILL.md)
+- Cursor: [.cursor/skills/es-session-analysis/SKILL.md](.cursor/skills/es-session-analysis/SKILL.md), [.cursor/skills/es-session-analysis-sample/SKILL.md](.cursor/skills/es-session-analysis-sample/SKILL.md)
