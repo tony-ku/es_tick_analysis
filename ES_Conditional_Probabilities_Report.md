@@ -3,7 +3,7 @@
 **Instrument:** `@ES#` (E-mini S&P 500, continuous front-month)
 **Sample:** 5,308 trading days — **2005-09-07 through 2026-04-10**
 **Session convention:** America/Chicago. Day session = **08:30–16:00**, Initial Balance (IB) = **08:30–09:30**, Overnight = **prior-day 17:00 – today 08:30**.
-**Methodology:** Tick-level pass over Investor/RT data. Tick size 0.25. VPOC computed on `TICKVOL > 0`; highs/lows on all ticks. VPOC ties resolved to the midpoint of the tied range.
+**Methodology:** Tick-level pass over Investor/RT data. Tick size 0.25. VPOC computed on `TICKVOL > 0`; highs/lows on all ticks. VPOC ties resolved to the midpoint of the tied range. Value Area (70%) via Steidlmayer algorithm: seed at POC, expand by larger of 2-above vs 2-below pairs (upper on tie) until ≥70% of day volume.
 
 ---
 
@@ -25,8 +25,10 @@ Reference levels used throughout:
 |---|---|
 | **ON VPOC** | Overnight session volume point-of-control |
 | **ONH / ONL / ONMID** | Overnight high / low / midpoint |
+| **ONH or ONL** | Either overnight extreme touched |
 | **yDay VPOC** | Prior day session VPOC |
 | **yDay High / yDay Low** | Prior day session high / low |
+| **pVAH / pVAL** | Prior day Value Area High / Low (Steidlmayer 70%) |
 | **IBH / IBL** | Initial Balance high / low (08:30–09:30) |
 
 ---
@@ -39,11 +41,14 @@ Probability that each reference level is touched during the day session, given t
 
 | Reference level | Hits / n | **P(hit)** |
 |---|---:|---:|
+| ONH or ONL | 1649 / 1709 | **96.49%** |
 | ON VPOC    | 1517 / 1709 | **88.77%** |
 | ONMID      | 1385 / 1709 | **81.04%** |
 | ONH        | 1300 / 1709 | **76.07%** |
+| pVAH       | 1218 / 1709 | **71.27%** |
 | yDay VPOC  | 1190 / 1709 | **69.63%** |
 | yDay High  |  974 / 1709 | **56.99%** |
+| pVAL       |  928 / 1709 | **54.30%** |
 | ONL        |  892 / 1709 | **52.19%** |
 | yDay Low   |  619 / 1709 | **36.22%** |
 
@@ -51,10 +56,13 @@ Probability that each reference level is touched during the day session, given t
 
 | Reference level | Hits / n | **P(hit)** |
 |---|---:|---:|
+| ONH or ONL | 1522 / 1599 | **95.18%** |
 | ON VPOC    | 1418 / 1599 | **88.68%** |
 | ONMID      | 1334 / 1599 | **83.43%** |
 | ONL        | 1158 / 1599 | **72.42%** |
 | yDay VPOC  | 1138 / 1599 | **71.17%** |
+| pVAL       | 1115 / 1599 | **69.73%** |
+| pVAH       |  892 / 1599 | **55.78%** |
 | ONH        |  839 / 1599 | **52.47%** |
 | yDay Low   |  819 / 1599 | **51.22%** |
 | yDay High  |  650 / 1599 | **40.65%** |
@@ -63,30 +71,38 @@ Probability that each reference level is touched during the day session, given t
 
 | Reference level | Hits / n | **P(hit)** |
 |---|---:|---:|
+| ONH or ONL | 1131 / 1202 | **94.09%** |
 | ON VPOC    | 1000 / 1202 | **83.19%** |
 | ONH        |  912 / 1202 | **75.87%** |
 | ONMID      |  800 / 1202 | **66.56%** |
 | yDay High  |  781 / 1202 | **64.98%** |
+| pVAH       |  614 / 1202 | **51.08%** |
 | yDay VPOC  |  462 / 1202 | **38.44%** |
 | ONL        |  420 / 1202 | **34.94%** |
+| pVAL       |  253 / 1202 | **21.05%** |
 | yDay Low   |  148 / 1202 | **12.31%** |
 
 ### LOR — Lower Outside Range *(open below prior day low · 15.03% of days · n = 798)*
 
 | Reference level | Hits / n | **P(hit)** |
 |---|---:|---:|
+| ONH or ONL | 748 / 798 | **93.73%** |
 | ON VPOC    | 697 / 798 | **87.34%** |
 | ONL        | 588 / 798 | **73.68%** |
 | yDay Low   | 551 / 798 | **69.05%** |
 | ONMID      | 550 / 798 | **68.92%** |
+| pVAL       | 432 / 798 | **54.14%** |
 | yDay VPOC  | 315 / 798 | **39.47%** |
 | ONH        | 307 / 798 | **38.47%** |
+| pVAH       | 177 / 798 | **22.18%** |
 | yDay High  | 107 / 798 | **13.41%** |
 
 ### Takeaways
 
-- **ON VPOC is the most-touched level in every regime** (83–89%). It is the single strongest magnet intraday regardless of where price opens.
+- **At least one overnight extreme (ONH or ONL) is touched 94–96% of the time** across all open types — the most reliable statistic in this dataset.
+- **ON VPOC is the most-touched single level in every regime** (83–89%). It is the single strongest magnet intraday regardless of where price opens.
 - **Inside-range opens (HIR / LIR) tag the full overnight structure frequently** — ONMID and ON VPOC are both >80%, making overnight midline a high-probability target on balanced opens.
+- **pVAH/pVAL asymmetry mirrors open direction**: HIR hits pVAH 71% but pVAL only 54%; LIR hits pVAL 70% but pVAH only 56%. The prior day's value area boundary *toward* the open direction is the stronger magnet. This asymmetry widens dramatically for outside-range opens (HOR: pVAH 51% vs pVAL 21%; LOR: pVAL 54% vs pVAH 22%).
 - **Outside-range opens retrace into range strongly**: HOR hits prior day high 65% of the time, LOR hits prior day low 69% of the time — but only 12–13% make it all the way across to the opposite prior-day extreme.
 - **yDay Low on HIR / LIR days is rare** (36% / 51%) — a long trade targeting the *prior* day's low from an inside-range open is a low-base-rate setup.
 
