@@ -104,6 +104,13 @@ class OvernightAgg:
             b = price_bucket(price)
             self.vol_bins[b] += tickvol
 
+    def bulk_merge(self, min_p: float, max_p: float, vol_bins_chunk: Dict[float, float]) -> None:
+        """Merge vectorized chunk results into this aggregate."""
+        self.min_p = min(self.min_p, min_p)
+        self.max_p = max(self.max_p, max_p)
+        for bucket, vol in vol_bins_chunk.items():
+            self.vol_bins[bucket] += vol
+
     def onh(self) -> Optional[float]:
         return None if self.min_p == float("inf") else self.max_p
 
@@ -158,6 +165,36 @@ class DaySessionAgg:
         if ts >= ib_hi:
             self.post_ib_min = min(self.post_ib_min, price)
             self.post_ib_max = max(self.post_ib_max, price)
+
+    def bulk_merge(
+        self,
+        min_p: float,
+        max_p: float,
+        vol_bins_chunk: Dict[float, float],
+        first_ts: datetime,
+        first_price: float,
+        last_ts: datetime,
+        last_price: float,
+        ib_min: float,
+        ib_max: float,
+        post_ib_min: float,
+        post_ib_max: float,
+    ) -> None:
+        """Merge vectorized chunk results into this aggregate."""
+        self.min_p = min(self.min_p, min_p)
+        self.max_p = max(self.max_p, max_p)
+        for bucket, vol in vol_bins_chunk.items():
+            self.vol_bins[bucket] += vol
+        if self.first_ts is None or first_ts < self.first_ts:
+            self.first_ts = first_ts
+            self.first_price = first_price
+        if self.last_ts is None or last_ts >= self.last_ts:
+            self.last_ts = last_ts
+            self.last_price = last_price
+        self.ib_min = min(self.ib_min, ib_min)
+        self.ib_max = max(self.ib_max, ib_max)
+        self.post_ib_min = min(self.post_ib_min, post_ib_min)
+        self.post_ib_max = max(self.post_ib_max, post_ib_max)
 
     def day_vpoc(self) -> Optional[float]:
         return vpoc_from_bins(dict(self.vol_bins))

@@ -11,7 +11,16 @@ import numpy as np
 import pandas as pd
 
 from .aggregates import DaySessionAgg, OvernightAgg
-from .sessions import as_chicago_ts, day_trading_day, overnight_trading_day
+from .sessions import (
+    CHICAGO,
+    DAY_CLOSE_S,
+    DAY_OPEN_S,
+    IB_END_S,
+    ON_OPEN_S,
+    as_chicago_ts,
+    day_trading_day,
+    overnight_trading_day,
+)
 
 
 def _is_data_row(sym: Any) -> bool:
@@ -118,7 +127,7 @@ def _chunk_tick_arrays(df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray, np.nda
     Returns (row_indices, ts_vals, price_arr, vol_arr) for rows to process.
     """
     # Investor/RT-style ISO strings; `mixed` avoids per-element fallback when possible
-    ts_series = pd.to_datetime(df["DATE"], errors="coerce", format="mixed")
+    ts_series = pd.to_datetime(df["DATE"], errors="coerce", format="%Y-%m-%dT%H:%M:%S")
     base = _vector_data_mask_from_cols(df, ts_series)
     prices = pd.to_numeric(df["PRICE"], errors="coerce")
     vols = pd.to_numeric(df["TICKVOL"], errors="coerce")
@@ -130,6 +139,134 @@ def _chunk_tick_arrays(df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray, np.nda
         prices.to_numpy(dtype=np.float64, copy=False),
         vols.to_numpy(dtype=np.float64, copy=False),
     )
+
+
+def _vectorized_session_aggs(
+    idx: np.ndarray,
+    ts_vals: np.ndarray,
+    p_arr: np.ndarray,
+    v_arr: np.ndarray,
+    on_aggs: Dict[date, OvernightAgg],
+    day_aggs: Dict[date, DaySessionAgg],
+) -> None:
+    """Vectorized session classification and aggregation for one chunk."""
+    if len(idx) == 0:
+        return
+
+    # Slice to valid rows only
+    ts = ts_vals[idx]
+    prices = p_arr[idx]
+    vols = v_arr[idx]
+
+    # Time decomposition (numpy, no Python loop)
+    dates_d64 = ts.astype("datetime64[D]")
+    time_of_day_s = (ts - dates_d64).astype("timedelta64[s]").astype(np.int64)
+
+    # Session classification masks
+    is_evening = time_of_day_s >= ON_OPEN_S
+    is_morning = time_of_day_s < DAY_OPEN_S
+    is_overnight = is_evening | is_morning
+    is_day = (time_of_day_s >= DAY_OPEN_S) & (time_of_day_s < DAY_CLOSE_S)
+
+    # Overnight trading day: evening -> date+1, morning -> same date
+    on_trading_day_d64 = np.where(
+        is_evening,
+        dates_d64 + np.timedelta64(1, "D"),
+        dates_d64,
+    )
+
+    # Price bucketing (vectorized)
+    bucketed = np.floor(prices * 4.0 + 0.5) / 4.0
+    has_vol = vols > 0
+
+    # Overnight aggregation
+    if is_overnight.any():
+        on_idx = np.flatnonzero(is_overnight)
+        on_dates = on_trading_day_d64[on_idx]
+        on_prices = prices[on_idx]
+        on_vols = vols[on_idx]
+        on_bucketed = bucketed[on_idx]
+        on_has_vol = has_vol[on_idx]
+
+        unique_on_days, inverse = np.unique(on_dates, return_inverse=True)
+        for j, ud64 in enumerate(unique_on_days):
+            mask_j = inverse == j
+            d = ud64.item()  # numpy datetime64[D] -> Python date
+            chunk_min = float(on_prices[mask_j].min())
+            chunk_max = float(on_prices[mask_j].max())
+            vol_mask = mask_j & on_has_vol
+            vol_bins: Dict[float, float] = {}
+            if vol_mask.any():
+                ub, inv_b = np.unique(on_bucketed[vol_mask], return_inverse=True)
+                vol_sums = np.zeros(len(ub), dtype=np.float64)
+                np.add.at(vol_sums, inv_b, on_vols[vol_mask])
+                vol_bins = dict(zip(ub.tolist(), vol_sums.tolist()))
+            on_aggs.setdefault(d, OvernightAgg()).bulk_merge(chunk_min, chunk_max, vol_bins)
+
+    # Day session aggregation
+    if is_day.any():
+        day_idx = np.flatnonzero(is_day)
+        day_dates = dates_d64[day_idx]
+        day_ts = ts[day_idx]
+        day_prices = prices[day_idx]
+        day_vols = vols[day_idx]
+        day_bucketed = bucketed[day_idx]
+        day_has_vol = has_vol[day_idx]
+        day_tod = time_of_day_s[day_idx]
+
+        unique_day_days, inverse = np.unique(day_dates, return_inverse=True)
+        for j, ud64 in enumerate(unique_day_days):
+            mask_j = inverse == j
+            d = ud64.item()
+
+            d_prices = day_prices[mask_j]
+            d_ts = day_ts[mask_j]
+            chunk_min = float(d_prices.min())
+            chunk_max = float(d_prices.max())
+
+            # Volume bins
+            vol_mask = mask_j & day_has_vol
+            vol_bins_day: Dict[float, float] = {}
+            if vol_mask.any():
+                ub, inv_b = np.unique(day_bucketed[vol_mask], return_inverse=True)
+                vol_sums = np.zeros(len(ub), dtype=np.float64)
+                np.add.at(vol_sums, inv_b, day_vols[vol_mask])
+                vol_bins_day = dict(zip(ub.tolist(), vol_sums.tolist()))
+
+            # First/last tick by timestamp
+            first_idx_local = int(np.argmin(d_ts))
+            max_ts_val = d_ts.max()
+            last_idx_local = int(np.flatnonzero(d_ts == max_ts_val)[-1])
+
+            first_ts_dt = pd.Timestamp(d_ts[first_idx_local]).to_pydatetime().replace(tzinfo=CHICAGO)
+            first_price = float(d_prices[first_idx_local])
+            last_ts_dt = pd.Timestamp(d_ts[last_idx_local]).to_pydatetime().replace(tzinfo=CHICAGO)
+            last_price = float(d_prices[last_idx_local])
+
+            # IB min/max (08:30 <= tod < 09:30)
+            d_tod = day_tod[mask_j]
+            ib_mask_local = d_tod < IB_END_S
+            ib_min_v = float("inf")
+            ib_max_v = float("-inf")
+            if ib_mask_local.any():
+                ib_min_v = float(d_prices[ib_mask_local].min())
+                ib_max_v = float(d_prices[ib_mask_local].max())
+
+            # Post-IB min/max (09:30 <= tod < 16:00)
+            pib_mask_local = d_tod >= IB_END_S
+            pib_min_v = float("inf")
+            pib_max_v = float("-inf")
+            if pib_mask_local.any():
+                pib_min_v = float(d_prices[pib_mask_local].min())
+                pib_max_v = float(d_prices[pib_mask_local].max())
+
+            day_aggs.setdefault(d, DaySessionAgg()).bulk_merge(
+                chunk_min, chunk_max, vol_bins_day,
+                first_ts_dt, first_price,
+                last_ts_dt, last_price,
+                ib_min_v, ib_max_v,
+                pib_min_v, pib_max_v,
+            )
 
 
 def _row_to_tick(row: Any) -> Optional[tuple]:
@@ -169,15 +306,7 @@ def _apply_tick(
 def process_ticks_frame(df: pd.DataFrame, on_aggs: Dict[date, OvernightAgg], day_aggs: Dict[date, DaySessionAgg]) -> None:
     """Ingest a DataFrame of ticks; mutates on_aggs and day_aggs."""
     idx, ts_vals, p_arr, v_arr = _chunk_tick_arrays(df)
-    for i in idx:
-        try:
-            raw_t = ts_vals[i]
-            if pd.isna(raw_t):
-                continue
-            ts = as_chicago_ts(pd.Timestamp(raw_t).to_pydatetime())
-            _apply_tick(ts, float(p_arr[i]), float(v_arr[i]), on_aggs, day_aggs)
-        except (ValueError, TypeError, OverflowError):
-            continue
+    _vectorized_session_aggs(idx, ts_vals, p_arr, v_arr, on_aggs, day_aggs)
 
 
 @dataclass
@@ -211,22 +340,34 @@ def process_ticks_frame_windowed(
     Returns True if the caller should stop reading the file (saw a tick past the window).
     """
     idx, ts_vals, p_arr, v_arr = _chunk_tick_arrays(df)
-    for i in idx:
-        try:
-            raw_t = ts_vals[i]
-            if pd.isna(raw_t):
-                continue
-            ts = as_chicago_ts(pd.Timestamp(raw_t).to_pydatetime())
-            td = ts.date()
-            st = window.classify_tick_date(td)
-            if st == "stop":
-                return True
-            if st == "skip":
-                continue
-            _apply_tick(ts, float(p_arr[i]), float(v_arr[i]), on_aggs, day_aggs)
-        except (ValueError, TypeError, OverflowError):
-            continue
-    return False
+    if len(idx) == 0:
+        return False
+
+    # Extract calendar dates for valid ticks (naive-Chicago datetime64 -> date)
+    ts_valid = ts_vals[idx]
+    cal_dates = ts_valid.astype("datetime64[D]")
+
+    # Set anchor from first valid tick if needed
+    if window.anchor_date is None:
+        first_date = cal_dates[0].item()  # numpy datetime64[D] -> Python date
+        window.anchor_date = first_date
+        window.last_inclusive = first_date + timedelta(days=window.max_calendar_days - 1)
+
+    # Vectorized window check
+    anchor_d64 = np.datetime64(window.anchor_date, "D")
+    last_d64 = np.datetime64(window.last_inclusive, "D")
+
+    past_window = cal_dates > last_d64
+    before_anchor = cal_dates < anchor_d64
+    in_window = ~past_window & ~before_anchor
+
+    saw_stop = bool(past_window.any())
+
+    if in_window.any():
+        win_orig_idx = idx[np.flatnonzero(in_window)]
+        _vectorized_session_aggs(win_orig_idx, ts_vals, p_arr, v_arr, on_aggs, day_aggs)
+
+    return saw_stop
 
 
 def build_daily_rows(
