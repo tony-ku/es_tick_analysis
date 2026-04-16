@@ -14,6 +14,12 @@ DAY_CLOSE = time(16, 0)
 ON_OPEN = time(17, 0)
 IB_END = time(9, 30)
 
+# Integer-second equivalents for vectorized numpy session classification
+DAY_OPEN_S = 8 * 3600 + 30 * 60    # 30600
+DAY_CLOSE_S = 16 * 3600            # 57600
+ON_OPEN_S = 17 * 3600              # 61200
+IB_END_S = 9 * 3600 + 30 * 60     # 34200
+
 TICK_SIZE = 0.25
 
 
