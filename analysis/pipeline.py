@@ -254,11 +254,13 @@ def build_daily_rows(
 
         if prior_day is None or prior_day.min_p == float("inf"):
             prior_high = prior_low = prior_close = prior_vpoc = None
+            prior_vah = prior_val = None
         else:
             prior_high = prior_day.max_p
             prior_low = prior_day.min_p
             prior_close = prior_day.last_price
             prior_vpoc = prior_day.day_vpoc()
+            prior_vah, prior_val = prior_day.day_value_area()
 
         open_px = day.first_price
         if open_px is None:
@@ -314,6 +316,8 @@ def build_daily_rows(
             "prior_day_high": prior_high,
             "prior_day_low": prior_low,
             "prior_day_vpoc": prior_vpoc,
+            "prior_day_vah": prior_vah,
+            "prior_day_val": prior_val,
             "open_bucket": bucket,
             "onh": onh,
             "onl": onl,
@@ -332,8 +336,14 @@ def build_daily_rows(
             "hit_onl": level_hit(lo, hi, onl),
             "hit_onmid": level_hit(lo, hi, onmid),
             "hit_onh": level_hit(lo, hi, onh),
+            "hit_onh_or_onl": (
+                None if (onh is None or onl is None)
+                else (level_hit(lo, hi, onh) or level_hit(lo, hi, onl))
+            ),
             "hit_prior_day_high": level_hit(lo, hi, prior_high),
             "hit_prior_day_low": level_hit(lo, hi, prior_low),
+            "hit_prior_day_vah": level_hit(lo, hi, prior_vah),
+            "hit_prior_day_val": level_hit(lo, hi, prior_val),
             "post_ib_exceed_ibh": post_ib_exceed_ibh,
             "post_ib_exceed_ibl": post_ib_exceed_ibl,
             "post_ib_exceed_upper_1p5": post_ib_exceed_upper_1p5,
@@ -352,8 +362,11 @@ LEVEL_KEYS = [
     "hit_onl",
     "hit_onmid",
     "hit_onh",
+    "hit_onh_or_onl",
     "hit_prior_day_high",
     "hit_prior_day_low",
+    "hit_prior_day_vah",
+    "hit_prior_day_val",
 ]
 
 LEVEL_LABELS = [
@@ -362,8 +375,11 @@ LEVEL_LABELS = [
     "ONL",
     "ONMID",
     "ONH",
+    "ONH_or_ONL",
     "yDay_High",
     "yDay_Low",
+    "pVAH",
+    "pVAL",
 ]
 
 POST_IB_LEVEL_KEYS = [
@@ -590,8 +606,9 @@ def probabilities_to_markdown(prob_df: pd.DataFrame) -> str:
         title = OPEN_BUCKET_TITLES.get(b, b)
         lines.append(f"\n## {title} (`{b}`){flag}\n")
 
+        sub_sorted = sub.sort_values("probability_pct", ascending=False, na_position="last")
         body: List[List[str]] = []
-        for _, r in sub.iterrows():
+        for _, r in sub_sorted.iterrows():
             p = r["probability_pct"]
             ps = f"{p:.2f}%" if pd.notna(p) else "nan"
             share = r["pct_of_total_days"]
@@ -629,8 +646,9 @@ def probabilities_post_ib_to_markdown(prob_df: pd.DataFrame) -> str:
         title = OPEN_BUCKET_TITLES.get(b, b)
         lines.append(f"\n## {title} (`{b}`){flag}\n")
 
+        sub_sorted = sub.sort_values("probability_pct", ascending=False, na_position="last")
         body: List[List[str]] = []
-        for _, r in sub.iterrows():
+        for _, r in sub_sorted.iterrows():
             p = r["probability_pct"]
             ps = f"{p:.2f}%" if pd.notna(p) else "nan"
             share = r["pct_of_total_days"]
