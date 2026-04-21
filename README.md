@@ -82,6 +82,15 @@ On completion, the sample run also prints the resolved anchor and last-inclusive
 python -m pytest tests/ -v
 ```
 
+## Future stats plans
+
+Planned additional reference-level conditional probabilities:
+
+- `pCL` — prior day close
+- `pMID` — prior day mid (midpoint of prior day high/low)
+- `pVAL` & `pVAH` — prior day Value Area Low / High
+- `pHI` & `pLO` — prior day high / low
+
 ## ⚠ Disclaimer
 
 **The code, data, and reports in this repository — including [ES_Conditional_Probabilities_Report.md](ES_Conditional_Probabilities_Report.md) — are provided for educational and informational purposes only. They are not investment advice, a solicitation, or a recommendation to buy, sell, or hold any security, futures contract, or other financial instrument.**
