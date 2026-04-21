@@ -511,14 +511,14 @@ LEVEL_KEYS = [
 ]
 
 LEVEL_LABELS = [
-    "ON_VPOC",
-    "yDay_VPOC",
+    "ONPOC",
+    "pPOC",
     "ONL",
     "ONMID",
     "ONH",
     "ONH_or_ONL",
-    "yDay_High",
-    "yDay_Low",
+    "pHigh",
+    "pLow",
     "pVAH",
     "pVAL",
 ]

@@ -37,9 +37,9 @@ description: >-
 ## Derived metrics
 
 - **ONH / ONL / ONMID**: Session high / low / midpoint of ON window for that trading day.
-- **ON VPOC**: Volume profile POC over ON only.
+- **ON VPOC** (`ONPOC`): Volume profile POC over ON only.
 - **Prior day H / L / Close**: Day session on the **previous trading day**; close = last tick `PRICE` in that window.
-- **Prior day VPOC** (`yDay_VPOC`): VPOC over the prior trading day's Day session only.
+- **Prior day VPOC** (`pPOC`): VPOC over the prior trading day's Day session only.
 - **Prior day Value Area** (`pVAH`, `pVAL`): Steidlmayer 70% value area over the prior trading day's Day session volume profile (see VA algorithm below).
 - **Open**: First tick at or after 08:30 on the trading day (first `PRICE` in Day session).
 - **Open buckets** (stored in `open_bucket`; strict; otherwise **boundary**):
@@ -66,14 +66,14 @@ During **today's Day session** (08:30–16:00), a level **L** is **hit** if `day
 
 ## Ten reference levels (hits evaluated in today's Day session)
 
-1. `ON_VPOC` — overnight VPOC before today
-2. `yDay_VPOC` — prior trading day's day-session VPOC
+1. `ONPOC` — overnight VPOC before today
+2. `pPOC` — prior trading day's day-session VPOC
 3. `ONL`
 4. `ONMID` — `(ONH + ONL) / 2`
 5. `ONH`
 6. `ONH_or_ONL` — touched either overnight extreme
-7. `yDay_High` — prior trading day's day-session high
-8. `yDay_Low` — prior trading day's day-session low
+7. `pHigh` — prior trading day's day-session high
+8. `pLow` — prior trading day's day-session low
 9. `pVAH` — prior day Value Area High (Steidlmayer 70%)
 10. `pVAL` — prior day Value Area Low (Steidlmayer 70%)
 
