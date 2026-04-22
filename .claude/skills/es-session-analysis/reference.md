@@ -68,7 +68,7 @@ Prior day VAH/VAL (`pVAH`, `pVAL`) are this algorithm applied to the **previous 
 
 ## Reference levels in conditional probabilities
 
-Levels (export `level` column): `ON_VPOC`, `yDay_VPOC`, `ONL`, `ONMID`, `ONH`, `ONH_or_ONL`, `yDay_High`, `yDay_Low`, `pVAH`, `pVAL`.
+Levels (export `level` column): `ONPOC`, `pPOC`, `ONL`, `ONMID`, `ONH`, `ONH_or_ONL`, `pHigh`, `pLow`, `pVAH`, `pVAL`.
 
 - **ONMID** is the overnight midpoint `(ONH + ONL) / 2`; a hit means today's day session range brackets that price.
 - **ONH_or_ONL** is a composite: hit if either ONH or ONL is hit today.

@@ -36,9 +36,9 @@ description: >-
 ## Derived metrics
 
 - **ONH / ONL / ONMID**: Session high / low / midpoint of ON window for that trading day.
-- **ON VPOC**: Volume profile POC over ON only.
+- **ON VPOC** (`ONPOC`): Volume profile POC over ON only.
 - **Prior day H / L / Close**: Day session on calendar **yesterday**; close = last tick `PRICE` in that window.
-- **Yesterday Day VPOC**: VPOC over yesterday’s Day session only.
+- **Yesterday Day VPOC** (`pPOC`): VPOC over yesterday’s Day session only.
 - **Open**: First tick at or after 08:30 on the trading day (first `PRICE` in Day session).
 - **Open buckets** (stored in `open_bucket`; strict; otherwise **boundary**):
   - **`HIR`** (Higher Inside Range): `open > prior_close` and `open < prior_high` (gap up, still inside yesterday’s range)
@@ -64,13 +64,13 @@ During **today’s Day session** (08:30–16:00), a level **L** is **hit** if `d
 
 ## Seven reference levels (hits evaluated in today’s Day session)
 
-1. ON VPOC (overnight before today)
-2. yDay VPOC (`yDay_VPOC`) — yesterday’s day-session VPOC
+1. ON VPOC (`ONPOC`) — overnight before today
+2. yDay VPOC (`pPOC`) — yesterday’s day-session VPOC
 3. ONL
 4. ONMID (`ONMID`) — midpoint of overnight high and low
 5. ONH
-6. yDay high (`yDay_High`) — yesterday’s day-session high
-7. yDay low (`yDay_Low`) — yesterday’s day-session low
+6. yDay high (`pHigh`) — yesterday’s day-session high
+7. yDay low (`pLow`) — yesterday’s day-session low
 
 ## Running the tool
 

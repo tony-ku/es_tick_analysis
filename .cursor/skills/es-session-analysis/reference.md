@@ -53,7 +53,7 @@ If no volume in session, VPOC is undefined (`None`); such days may be excluded f
 
 ## Reference levels in conditional probabilities
 
-Levels (export `level` column): `ON_VPOC`, `yDay_VPOC`, `ONL`, `ONMID`, `ONH`, `yDay_High`, `yDay_Low`. **ONMID** is the overnight midpoint `(ONH + ONL) / 2`; a hit means today’s day session range brackets that price.
+Levels (export `level` column): `ONPOC`, `pPOC`, `ONL`, `ONMID`, `ONH`, `pHigh`, `pLow`. **ONMID** is the overnight midpoint `(ONH + ONL) / 2`; a hit means today’s day session range brackets that price.
 
 ## Conditional probability
 

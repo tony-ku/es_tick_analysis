@@ -1,0 +1,17 @@
+bucket,level,days_in_bucket,pct_of_total_days,days_level_defined,days_undefined_level,hit_count,probability_pct,small_sample
+HIR,post-IB high > IBH,0,0.0,0,0,0,,True
+HIR,post-IB low < IBL,0,0.0,0,0,0,,True
+HIR,post-IB high > IBH + 1.5*(IBH-IBL),0,0.0,0,0,0,,True
+HIR,post-IB low < IBL - 1.5*(IBH-IBL),0,0.0,0,0,0,,True
+LIR,post-IB high > IBH,1,100.0,1,0,0,0.0,True
+LIR,post-IB low < IBL,1,100.0,1,0,1,100.0,True
+LIR,post-IB high > IBH + 1.5*(IBH-IBL),1,100.0,1,0,0,0.0,True
+LIR,post-IB low < IBL - 1.5*(IBH-IBL),1,100.0,1,0,1,100.0,True
+HOR,post-IB high > IBH,0,0.0,0,0,0,,True
+HOR,post-IB low < IBL,0,0.0,0,0,0,,True
+HOR,post-IB high > IBH + 1.5*(IBH-IBL),0,0.0,0,0,0,,True
+HOR,post-IB low < IBL - 1.5*(IBH-IBL),0,0.0,0,0,0,,True
+LOR,post-IB high > IBH,0,0.0,0,0,0,,True
+LOR,post-IB low < IBL,0,0.0,0,0,0,,True
+LOR,post-IB high > IBH + 1.5*(IBH-IBL),0,0.0,0,0,0,,True
+LOR,post-IB low < IBL - 1.5*(IBH-IBL),0,0.0,0,0,0,,True
